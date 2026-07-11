@@ -8,7 +8,7 @@ from random import choice
 from typing import Optional
 
 from common.common import add_positions
-from hardware.keys import Key
+from hardware.interfaces import Key
 
 
 BEST_SCORE_FILE_NAME = ".best_score"

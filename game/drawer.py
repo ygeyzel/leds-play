@@ -2,7 +2,7 @@ from itertools import product
 from time import sleep
 from game.game_board import Board
 from common.common import add_positions, BOARD_DIMS
-from hardware.leds import DualMatrix
+from hardware.factory import create_matrix
 
 
 BOARD_POS_0 = (8, 2)
@@ -19,9 +19,9 @@ NEXT_CELL_BORDER_COLOR_HSV = (20, 0, 0.05)
 
 
 class Drawer:
-    def __init__(self):
-        self._matrix = DualMatrix(
-            MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT)
+    def __init__(self, mode: str = "rpi"):
+        self._matrix = create_matrix(
+            mode, MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT)
         board = Board(BOARD_DIMS)
 
         self._board_canvas = self._matrix.create_canvas(

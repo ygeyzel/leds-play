@@ -1,50 +1,43 @@
-from enum import Enum
 from RPi import GPIO
+
+from hardware.interfaces import Key, KeyHandler
 
 
 GPIO.setmode(GPIO.BCM)
 
+_KEY_PINS = {
+    Key.UP: 26,
+    Key.DOWN: 23,
+    Key.LEFT: 4,
+    Key.RIGHT: 12,
+}
 
-class Key(Enum):
-    NO_KEY = None
-    UP = 26
-    DOWN = 23
-    LEFT = 4
-    RIGHT = 12
 
-
-class _KeysHandler:
+class RpiKeyHandler(KeyHandler):
     def __init__(self):
         self._last_key_pressed = Key.NO_KEY
         self._key_clicked = Key.NO_KEY
+        self._pin_to_key = {pin: key for key, pin in _KEY_PINS.items()}
 
-        for key in Key:
-            if key_gpio := key.value:
-                GPIO.setup(key_gpio, GPIO.IN, GPIO.PUD_UP)
-                GPIO.add_event_detect(key_gpio, GPIO.BOTH, callback=self._handle_key_pressed)
-    
+        for key, pin in _KEY_PINS.items():
+            GPIO.setup(pin, GPIO.IN, GPIO.PUD_UP)
+            GPIO.add_event_detect(pin, GPIO.BOTH, callback=self._handle_key_pressed)
+
     def _handle_key_pressed(self, channel):
-        key = Key(channel)
+        key = self._pin_to_key[channel]
 
         if GPIO.input(channel):
             if key == self._last_key_pressed:
-                self._key_clicked = Key(channel)
+                self._key_clicked = key
                 self._last_key_pressed = Key.NO_KEY
         else:
             self._last_key_pressed = key
-            
+
     def get_key(self) -> Key:
         key = self._key_clicked
         self.flush()
         return key
-    
+
     def flush(self):
         self._last_key_pressed = Key.NO_KEY
         self._key_clicked = Key.NO_KEY
-
-
-_key_handler = _KeysHandler()
-
-
-def KeyHandler() -> _KeysHandler:
-    return _key_handler

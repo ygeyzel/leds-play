@@ -11,17 +11,24 @@ Snake, Pong, ...) and is moving towards a bigger/more flexible hardware setup
 
 > **Status:** actively being migrated from the original single-game TetLED
 > codebase. See [`STATUS.md`](STATUS.md) for what's done and what's planned.
-> Right now the code still only runs Tetris, directly on Raspberry Pi
-> hardware — simulator mode and other games are not implemented yet.
+> The game itself is still Tetris-only (the multi-game abstraction hasn't
+> landed yet), but it now runs in both `rpi` and `sim` mode.
 
 ## Modes
 
+Selected with a CLI arg to `main.py` (`rpi` is the default):
+
 - **`rpi` mode** — runs on a Raspberry Pi driving a real WS281x LED matrix
-  and physical GPIO buttons. This is the original, currently the only
-  working mode.
-- **`simulator` mode** *(planned)* — runs on a regular PC with a graphical
-  window standing in for the LED matrix and the keyboard standing in for the
-  buttons, so games can be developed and tested without any hardware.
+  and physical GPIO buttons.
+- **`sim` mode** — runs on a regular PC with a tkinter window standing in
+  for the LED matrix (pixel-for-pixel) and the keyboard arrow keys standing
+  in for the buttons, so games can be developed and tested without any
+  hardware. It also shows score/high score as 7-segment-style digits and
+  highlights button presses on screen.
+
+```bash
+python main.py sim
+```
 
 ## Hardware (current)
 
@@ -34,21 +41,25 @@ display area or more input actions than Tetris did.
 
 ## Requirements
 
-- Raspberry Pi (for `rpi` mode).
-- Python 3, see `requirements.txt`.
+- Python 3.
+- `sim` mode only needs the standard library (tkinter).
+- `rpi` mode additionally needs `requirements-rpi.txt` (Raspberry Pi only).
 
 ```bash
 pip install -r requirements.txt
+# on the Pi, also:
+pip install -r requirements-rpi.txt
 ```
 
 ## Running
 
 ```bash
-python main.py
+python main.py          # rpi mode (default)
+python main.py sim       # simulator mode, on a regular PC
 ```
 
 Controls: the buttons currently map to left / right / rotate (up) / drop
-(down).
+(down). In `sim` mode these are the keyboard arrow keys.
 
 ## Development
 
@@ -59,11 +70,16 @@ be run on a Pi with the hardware attached, not as an automated test suite.
 ## Project layout
 
 ```
-common/    shared types and helpers
-game/      game logic and rendering (currently Tetris only)
-hardware/  LED matrix and button drivers
-tests/     manual hardware checks
-main.py    entry point / game loop
+common/              shared types and helpers
+game/                game logic and rendering (currently Tetris only)
+hardware/
+  interfaces.py       Matrix / KeyHandler / ScoreDisplay contracts, shared Key enum
+  canvas.py            hardware-agnostic drawing surface used by game/drawer.py
+  factory.py           picks the rpi or simulator backend for a given mode
+  rpi/                 real hardware: WS281x matrix, GPIO buttons, serial score
+  simulator/           tkinter stand-ins: matrix, keyboard buttons, 7-seg score
+tests/               manual hardware checks
+main.py              entry point / game loop
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for more detail on the current architecture and

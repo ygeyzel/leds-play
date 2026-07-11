@@ -30,7 +30,7 @@ board_pos_0 = [
 ]
 
 
-drawer = Drawer()
+drawer = Drawer("rpi")
 
 
 @matrix_test

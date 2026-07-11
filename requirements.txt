@@ -1,3 +1,5 @@
-lgpio
-rpi-ws281x
-pyserial
+# Base/cross-platform dependencies (simulator mode, tests).
+# The simulator uses tkinter, which ships with the Python standard
+# library, so there's nothing extra to install here yet.
+#
+# For rpi mode (real hardware), also install requirements-rpi.txt.
