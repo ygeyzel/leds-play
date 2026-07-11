@@ -7,7 +7,7 @@ from common.common import Position
 CELL_SIZE = 18
 CELL_GAP = 2
 
-BG_COLOR = "#000000"
+BG_COLOR = "#101010"
 
 PANEL_PADDING = 24
 SIDE_PANEL_WIDTH = 220

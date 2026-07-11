@@ -3,7 +3,8 @@ from hardware.interfaces import Matrix
 from hardware.simulator.window import get_window
 
 
-UNLIT_COLOR = "#101010"
+UNLIT_COLOR = "#000000"
+BRIGTHNESS_FACTOR = 5
 
 
 class SimulatorMatrix(Matrix):
@@ -48,7 +49,8 @@ class SimulatorMatrix(Matrix):
     def show(self):
         canvas = self._window.canvas
         for pos, value in self._pending.items():
-            color = ("#%02x%02x%02x" % hsv_to_rgb(value)) if value else UNLIT_COLOR
+            adjusted_value = (value[0], value[1], min(value[2] * BRIGTHNESS_FACTOR, 1)) if value else None
+            color = ("#%02x%02x%02x" % hsv_to_rgb(adjusted_value)) if value else UNLIT_COLOR
             canvas.itemconfig(self._pixel_ids[pos], fill=color)
         self._pending.clear()
         self._window.pump()
