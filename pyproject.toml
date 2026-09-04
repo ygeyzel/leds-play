@@ -1,0 +1,18 @@
+[project]
+name = "leds-play"
+version = "0.1.0"
+description = "A multi-game platform for an LED-matrix display with physical button controls."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+# Real-hardware (Raspberry Pi) backend only; not needed for `sim` mode.
+rpi = [
+    "rpi-ws281x",
+    "lgpio",
+    "pyserial",
+]
+
+[tool.uv]
+package = false
