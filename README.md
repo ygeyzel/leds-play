@@ -43,7 +43,17 @@ display area or more input actions than Tetris did.
 
 - Python 3.
 - `sim` mode only needs the standard library (tkinter).
-- `rpi` mode additionally needs `requirements-rpi.txt` (Raspberry Pi only).
+- `rpi` mode additionally needs the `rpi` dependency group (Raspberry Pi
+  only).
+
+Using [`uv`](https://docs.astral.sh/uv/) (recommended):
+
+```bash
+uv sync              # sim mode deps (none beyond the standard library)
+uv sync --extra rpi  # on the Pi, also installs the rpi hardware deps
+```
+
+Or with plain `pip`:
 
 ```bash
 pip install -r requirements.txt
@@ -54,9 +64,12 @@ pip install -r requirements-rpi.txt
 ## Running
 
 ```bash
-python main.py          # rpi mode (default)
-python main.py sim       # simulator mode, on a regular PC
+uv run python main.py          # rpi mode (default)
+uv run python main.py sim      # simulator mode, on a regular PC
 ```
+
+(or, without `uv`, `python main.py` / `python main.py sim` as usual once
+dependencies are installed.)
 
 Controls: the buttons currently map to left / right / rotate (up) / drop
 (down). In `sim` mode these are the keyboard arrow keys.
