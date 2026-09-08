@@ -1,7 +1,7 @@
 import argparse
 from time import sleep, time
 
-from game.drawer import Drawer
+from game.drawer import NUM_OF_MATRICES, SIZE_OF_BANNER, Drawer
 from game.game_board import Board
 from hardware.factory import create_key_handler, create_score_display
 from hardware.interfaces import Key, KeyHandler
@@ -12,6 +12,14 @@ def parse_args():
     parser.add_argument(
         "mode", nargs="?", choices=["rpi", "sim"], default="rpi",
         help="run against real hardware (rpi) or the graphical simulator (sim); default: rpi")
+    parser.add_argument(
+        "--num-of-matrices", type=int, default=NUM_OF_MATRICES,
+        help="number of chained board LED panels (each 8x32); default: %(default)s. "
+             "rpi mode doesn't support this yet and always uses 2.")
+    parser.add_argument(
+        "--size-of-banner", type=int, default=SIZE_OF_BANNER,
+        help="number of chained banner LED panels (each 8 rows x 32 cols); "
+             "default: %(default)s. rpi mode doesn't support a banner yet.")
     return parser.parse_args()
 
 
@@ -61,9 +69,10 @@ def game_loop(score_display, board: Board, drawer: Drawer, key_handler: KeyHandl
 
 
 def main():
-    mode = parse_args().mode
+    args = parse_args()
+    mode = args.mode
 
-    drawer = Drawer(mode)
+    drawer = Drawer(mode, args.num_of_matrices, args.size_of_banner)
     board = drawer.board
     board.burn_animation = drawer.burn_animation
 

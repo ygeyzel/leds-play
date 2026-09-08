@@ -107,7 +107,9 @@ class Board:
             Key.UP: self.rotate_block,
             Key.DOWN: self.drop
         }
-        key_func_swich[key]()
+        # Keys Tetris doesn't handle (e.g. the 2nd D-pad, ENTER) are ignored
+        # rather than raising, since they're reachable from the sim now.
+        key_func_swich.get(key, lambda: None)()
 
         if key == Key.DOWN or not self.move_block(Direction.DOWN):
             self._block_reach_bottom()
