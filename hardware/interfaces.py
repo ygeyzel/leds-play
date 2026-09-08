@@ -11,6 +11,11 @@ class Key(Enum):
     DOWN = 2
     LEFT = 3
     RIGHT = 4
+    P2_UP = 5
+    P2_DOWN = 6
+    P2_LEFT = 7
+    P2_RIGHT = 8
+    ENTER = 9
 
 
 class Matrix(ABC):

@@ -37,7 +37,26 @@ python main.py sim
 - Optional: an external serial (ESP32) score display.
 
 This is expected to grow (more LEDs, more buttons) as new games need more
-display area or more input actions than Tetris did.
+display area or more input actions than Tetris did. `sim` mode already
+supports the bigger setup described below for development purposes; the
+`rpi` backend hasn't been updated to match yet.
+
+## Hardware (sim mode, configurable)
+
+- **Board matrix**: `--num-of-matrices N` (default 5) chains N 8x32 panels
+  side by side into an `8*N`-wide by 32-tall matrix.
+- **Banner**: `--size-of-banner N` (default 2) chains N 8-row-by-32-col
+  panels side by side above the board matrix, as its own independent
+  matrix. Not rendered into by any game yet.
+- **Buttons**: two D-pads (up/down/left/right each) plus an Enter button,
+  9 inputs in total:
+  - D-pad 1 (original 4): arrow keys in `sim`.
+  - D-pad 2 (`Key.P2_*`, for a future 2nd player/game like Pong): `W`/`A`/`S`/`D`
+    in `sim`.
+  - Enter (`Key.ENTER`, for a future menu - enter/exit a game): `Enter`/`Return`
+    in `sim`.
+
+  `rpi` mode still only has the original 4 GPIO buttons.
 
 ## Requirements
 
@@ -66,13 +85,16 @@ pip install -r requirements-rpi.txt
 ```bash
 uv run python main.py          # rpi mode (default)
 uv run python main.py sim      # simulator mode, on a regular PC
+uv run python main.py sim --num-of-matrices 8 --size-of-banner 3  # bigger sim setup
 ```
 
 (or, without `uv`, `python main.py` / `python main.py sim` as usual once
 dependencies are installed.)
 
-Controls: the buttons currently map to left / right / rotate (up) / drop
-(down). In `sim` mode these are the keyboard arrow keys.
+Controls: Tetris only uses D-pad 1 (arrow keys in `sim`), mapped to left /
+right / rotate (up) / drop (down). D-pad 2 (`WASD` in `sim`) and Enter
+(`Enter`/`Return` in `sim`) exist for future games/menu navigation but
+aren't used by Tetris yet.
 
 ## Development
 

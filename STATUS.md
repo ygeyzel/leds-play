@@ -59,6 +59,30 @@ user-facing setup instructions.
   score digits updating, board logic) and a focused key-press test
   confirming the D-pad highlight and `get_key()` both react correctly to a
   simulated arrow-key press/release.
+- Added `pyproject.toml`/`uv.lock` for `uv` support (`uv sync` /
+  `uv sync --extra rpi` / `uv run`), alongside the existing pip
+  `requirements*.txt` files.
+- **`sim`-mode hardware expansion** (roadmap item 3 below, sim side only):
+  - Board matrix panel count is now a CLI flag, `--num-of-matrices`
+    (default 5, was hardcoded to 2) — `hardware/factory.py`'s
+    `create_matrix`/`hardware/simulator/leds.py`'s `SimulatorMatrix` take
+    `num_of_matrices` instead of assuming 2.
+  - New banner area: a second, independent matrix drawn above the board
+    matrix in the simulator window, sized via `--size-of-banner` (default
+    2, panels are 8 rows x 32 cols each). `hardware/factory.py`'s new
+    `create_banner_matrix()`; `Drawer` now holds `self._banner_matrix`
+    alongside `self._matrix`, but nothing draws game content into it yet.
+  - New buttons: a 2nd D-pad (`Key.P2_UP/DOWN/LEFT/RIGHT`, `WASD` in sim)
+    and a `Key.ENTER` button (`Return` in sim), for a future 2nd
+    player/game and menu navigation respectively. Tetris doesn't use them
+    (`Board.advance_turn` now ignores keys it doesn't recognize instead of
+    raising `KeyError`, so pressing them during a game is a harmless no-op).
+  - `hardware/rpi/*` deliberately untouched (still hardcoded to 2 panels,
+    4 buttons, no banner) — the rpi backend is now out of sync with the
+    sim backend's capabilities; `create_matrix`/`create_banner_matrix`
+    print a warning and fall back to the old rpi behavior (or `None` for
+    the banner) if run with non-default flags in `rpi` mode, rather than
+    crashing.
 
 ## In progress
 
@@ -75,17 +99,26 @@ Roughly in the order they'll likely need to happen:
    entry point (menu, or CLI arg).
 2. **Move Tetris into its own game module** (e.g. `games/tetris/`) behind
    that new interface, as the reference implementation.
-3. **Expand the hardware config**: more pixels (larger/different matrix
-   layout than the fixed dual-8x32), more buttons (beyond the current 4),
-   in a way that's driven by config rather than hardcoded constants
-   (`BOARD_POS_0`, `MATRIX_DPIN`, etc. in `game/drawer.py` today). The
-   shared `Key` enum and the simulator's D-pad layout would need to grow
-   alongside this.
-4. **Implement Snake** as the second game, to validate the abstraction
+3. **Expand the hardware config**: **partially done, sim side only** (see
+   "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
+   and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
+   - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
+     panels / 4 buttons / no banner) — needs real panel-count wiring math
+     generalized in `DualMatrix`, GPIO pins picked for the 5 new buttons
+     and a banner strip, and a rpi banner-matrix implementation.
+   - `BOARD_POS_0` etc. in `game/drawer.py` are still hardcoded Tetris
+     layout constants (unaffected by the bigger matrix — Tetris just gets
+     extra unused columns to the right for now).
+   - Nothing renders into the banner yet — that's step 4 below (games
+     need to be updated to actually use the bigger board/banner/buttons).
+4. **Update the games to use the expanded hardware** — Tetris doesn't
+   render into the banner or react to the 2nd D-pad/`Key.ENTER` yet.
+5. **Implement Snake** as the second game, to validate the abstraction
    actually generalizes.
-5. **Implement More Games** ...
+6. **Implement More Games** ...
 
 ## Open questions for the user
 
-- Exact new button layout/count and what extra actions they should map to
-  (relevant once hardware expands past the current 4 buttons).
+- Real GPIO pin numbers for the 5 new buttons and the banner strip, and
+  whatever panel-count/wiring specifics the rpi backend needs once it's
+  brought up to parity with the sim backend (see roadmap item 3).
