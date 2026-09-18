@@ -56,7 +56,7 @@ those are never deleted on the Pi either.
 
 ## Things to know
 
-- **Dependencies**: `rpi` mode needs `rpi-ws281x`, `lgpio`, `pyserial` on the
+- **Dependencies**: `rpi` mode needs `Adafruit-Blinka-Raspberry-Pi5-Neopixel`, `lgpio`, `pyserial` on the
   Pi. If `run` fails with `ModuleNotFoundError`, run `setup` (it installs
   into a Pi-side `.venv-rpi`, separate from the local uv `.venv` since the repo may be an sshfs mount of the Pi; created with `--system-site-packages` so the apt-provided `python3-lgpio` / `python3-rpi-lgpio` are used instead of building `lgpio` from source, which needs `swig`) — tell the user before doing so, since it installs
   packages on their device.
@@ -74,5 +74,5 @@ those are never deleted on the Pi either.
 - The LED matrix keeps its last frame if a process is killed mid-run; that's
   expected, not a bug in your change.
 - Keep hardware imports confined to `hardware/rpi/` (see CLAUDE.md) — being
-  able to run on the Pi is not a reason to import `RPi.GPIO`/`rpi_ws281x`
+  able to run on the Pi is not a reason to import `RPi.GPIO`/`adafruit_raspberry_pi5_neopixel_write`
   elsewhere.

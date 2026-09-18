@@ -6,15 +6,11 @@ from hardware.interfaces import KeyHandler, Matrix, ScoreDisplay
 
 def create_matrix(
     mode: str, din_pin: int, matrix_max_x: int, matrix_max_y: int,
-    num_of_matrices: int = 2, *, banner_dims: Optional[Position] = None,
+    num_of_matrices: int = 4, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
     if mode == "rpi":
-        from hardware.rpi.leds import DualMatrix
-        if num_of_matrices != 2:
-            print(
-                f"warning: rpi backend doesn't support --num-of-matrices yet "
-                f"(always chains 2 panels); ignoring requested {num_of_matrices}")
-        return DualMatrix(din_pin, matrix_max_x, matrix_max_y)
+        from hardware.rpi.leds import ChainedMatrix
+        return ChainedMatrix(din_pin, num_of_matrices, matrix_max_x, matrix_max_y)
 
     from hardware.simulator.leds import SimulatorMatrix
     return SimulatorMatrix(

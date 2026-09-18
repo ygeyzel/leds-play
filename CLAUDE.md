@@ -21,7 +21,7 @@ description below.
     for the matrix (pixel-for-pixel) and keyboard arrow keys standing in for
     the buttons, for development without hardware.
 - A hardware abstraction layer so game code never talks to `RPi.GPIO` or
-  `rpi_ws281x` directly: **done**, see `hardware/interfaces.py` (the
+  `adafruit_raspberry_pi5_neopixel_write` directly: **done**, see `hardware/interfaces.py` (the
   `Matrix`/`KeyHandler`/`ScoreDisplay` contracts) with an `hardware/rpi/`
   implementation and an `hardware/simulator/` implementation, picked by
   `hardware/factory.py`.
@@ -50,8 +50,10 @@ description below.
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
 - `hardware/rpi/` — real-hardware backend:
-  - `leds.py` — `DualMatrix`: driver for two 8x32 WS281x panels wired
-    together as one matrix. Imports `rpi_ws281x` at module scope (RPi-only).
+  - `leds.py` — `ChainedMatrix`: driver for N (default 4) concatenated 8x32
+    snake-wired WS281x panels on one data pin (default GPIO 4), each panel's
+    x- and y-axes reversed relative to the previous one. Imports `adafruit_raspberry_pi5_neopixel_write` at
+    module scope (RPi-only).
   - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)
     via edge-detect callbacks. Imports `RPi.GPIO` at module scope (RPi-only).
   - `score.py` — `SerialScoreDisplay`: optional serial link to an external
@@ -60,7 +62,7 @@ description below.
   standard library:
   - `window.py` — `SimulatorWindow`/`get_window()`: the single shared `Tk`
     root/canvas the matrix, keys and score backends below draw into.
-  - `leds.py` — `SimulatorMatrix`: pixel-for-pixel stand-in for `DualMatrix`.
+  - `leds.py` — `SimulatorMatrix`: pixel-for-pixel stand-in for `ChainedMatrix`.
   - `keys.py` — `SimulatorKeyHandler`: arrow keys -> `Key`, plus an on-screen
     D-pad that highlights the currently-pressed key.
   - `score.py` + `seven_segment.py` — `SimulatorScoreDisplay`: score/high
@@ -69,7 +71,9 @@ description below.
   `BOARD_DIMS`, `hsv_to_rgb`, `is_position_out_of_range`.
 - `tests/` — **not automated pytest**. These are manual/interactive checks
   meant to be run on the Pi with real hardware attached: they light up the
-  matrix or wait on real key presses and pause on `input()`. Don't treat a
+  matrix or wait on real key presses and pause on `input()`.
+  `tests/test_matrix_snake.py` (a 5x3 rectangle snaking across the whole
+  board) also runs in `sim` mode. Don't treat a
   clean run of these as CI-style verification, and don't try to run them
   without a Pi.
 
@@ -82,7 +86,7 @@ hand.
 - Positions are `(row, col)`-style tuples via the `Position` type in
   `common/common.py`; colors are HSV tuples (`HsvColor`) at the game/drawer
   level and converted to RGB only at the LED driver boundary.
-- Keep hardware-specific imports (`RPi.GPIO`, `rpi_ws281x`) confined to the
+- Keep hardware-specific imports (`RPi.GPIO`, `adafruit_raspberry_pi5_neopixel_write`) confined to the
   `rpi` hardware backend so `simulator` mode and tests can run on a plain PC
   without them installed.
 

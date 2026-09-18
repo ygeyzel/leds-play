@@ -43,7 +43,7 @@ supports the bigger setup described below for development purposes; the
 
 ## Hardware (sim mode, configurable)
 
-- **Board matrix**: `--num-of-matrices N` (default 5) chains N 8x32 panels
+- **Board matrix**: `--num-of-matrices N` (default 4) chains N 8x32 panels
   side by side into an `8*N`-wide by 32-tall matrix.
 - **Banner**: `--size-of-banner N` (default 2) chains N 8-row-by-32-col
   panels side by side above the board matrix, as its own independent

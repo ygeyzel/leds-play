@@ -29,9 +29,10 @@ user-facing setup instructions.
   enum; `hardware/canvas.py` holds the hardware-agnostic `Canvas` drawing
   surface (moved out of the old `hardware/leds.py`, unchanged otherwise).
   Game code (`game/drawer.py`, `game/game_board.py`) only imports from
-  `hardware.interfaces`/`hardware.factory`, never `RPi.GPIO`/`rpi_ws281x`
+  `hardware.interfaces`/`hardware.factory`, never `RPi.GPIO`/`adafruit_raspberry_pi5_neopixel_write`
   directly.
-- **`rpi` backend** (`hardware/rpi/`): `leds.py` (`DualMatrix`), `keys.py`
+- **`rpi` backend** (`hardware/rpi/`): `leds.py` (`DualMatrix`, since
+  replaced by `ChainedMatrix`), `keys.py`
   (`RpiKeyHandler`), `score.py` (`SerialScoreDisplay`) — adapted from the
   original inherited modules (which are now removed from `hardware/`'s top
   level) to implement the new interfaces; behavior unchanged.
@@ -51,9 +52,9 @@ user-facing setup instructions.
   `hardware/factory.py` (`create_matrix`/`create_key_handler`/
   `create_score_display`) which lazily imports the rpi-only modules only
   when `mode == "rpi"`, so `sim` mode and `tests/` never touch
-  `RPi.GPIO`/`rpi_ws281x`/`pyserial`.
+  `RPi.GPIO`/`adafruit_raspberry_pi5_neopixel_write`/`pyserial`.
 - Split `requirements.txt` (base/cross-platform — currently just stdlib
-  tkinter, nothing to install) from `requirements-rpi.txt` (`rpi-ws281x`,
+  tkinter, nothing to install) from `requirements-rpi.txt` (`Adafruit-Blinka-Raspberry-Pi5-Neopixel`,
   `lgpio`, `pyserial`).
 - Verified manually: ran `python main.py sim` end-to-end (matrix rendering,
   score digits updating, board logic) and a focused key-press test
@@ -83,6 +84,17 @@ user-facing setup instructions.
     print a warning and fall back to the old rpi behavior (or `None` for
     the banner) if run with non-default flags in `rpi` mode, rather than
     crashing.
+- **rpi board matrix rewritten for the new hardware**: `DualMatrix` replaced
+  by `hardware/rpi/leds.py`'s `ChainedMatrix` — N concatenated 8x32
+  snake-wired panels on one strip (default 4 panels, data pin GPIO 4), each
+  panel's x- and y-axes reversed vs. the previous one. `--num-of-matrices` now
+  works in rpi mode too; the shared default dropped from 5 to 4 to match
+  the real hardware. New manual check `tests/test_matrix_snake.py` (5x3
+  rectangle snaking top-left to bottom-right with changing colors; also
+  runs with `sim`). The old `tests/test_canvas.py`/`test_drawer.py`/
+  `test_keys.py`/`shared.py` were removed. The Pi is a Pi 5, which `rpi_ws281x` doesn't support,
+  so the driver now writes through Adafruit's
+  `Adafruit-Blinka-Raspberry-Pi5-Neopixel` (RP1 PIO, `/dev/pio0`) instead.
 
 ## In progress
 
@@ -102,10 +114,10 @@ Roughly in the order they'll likely need to happen:
 3. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
-   - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
-     panels / 4 buttons / no banner) — needs real panel-count wiring math
-     generalized in `DualMatrix`, GPIO pins picked for the 5 new buttons
-     and a banner strip, and a rpi banner-matrix implementation.
+   - `hardware/rpi/*` board matrix now supports N panels (`ChainedMatrix`),
+     but keys are still fixed at 4 buttons and there's no banner — needs
+     GPIO pins picked for the 5 new buttons and a banner strip, and a rpi
+     banner-matrix implementation.
    - `BOARD_POS_0` etc. in `game/drawer.py` are still hardcoded Tetris
      layout constants (unaffected by the bigger matrix — Tetris just gets
      extra unused columns to the right for now).

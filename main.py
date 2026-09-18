@@ -14,8 +14,7 @@ def parse_args():
         help="run against real hardware (rpi) or the graphical simulator (sim); default: rpi")
     parser.add_argument(
         "--num-of-matrices", type=int, default=NUM_OF_MATRICES,
-        help="number of chained board LED panels (each 8x32); default: %(default)s. "
-             "rpi mode doesn't support this yet and always uses 2.")
+        help="number of chained board LED panels (each 8x32); default: %(default)s")
     parser.add_argument(
         "--size-of-banner", type=int, default=SIZE_OF_BANNER,
         help="number of chained banner LED panels (each 8 rows x 32 cols); "

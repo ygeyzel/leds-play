@@ -8,8 +8,8 @@ from hardware.factory import create_banner_matrix, create_matrix
 BOARD_POS_0 = (8, 2)
 SINGLE_MATRIX_WIDTH = 8
 MATRIX_HEIGHT = 32
-MATRIX_DPIN = 18
-NUM_OF_MATRICES = 5
+MATRIX_DPIN = 4
+NUM_OF_MATRICES = 4
 
 BANNER_PANEL_WIDTH = 32
 BANNER_PANEL_HEIGHT = 8
