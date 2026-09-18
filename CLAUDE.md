@@ -88,5 +88,8 @@ hand.
 
 ## Workflow notes
 
+- To run anything on the Pi (rpi mode, `tests/`), use the `rpi` skill
+  (`.claude/skills/rpi/`); SSH details come from the gitignored
+  `.rpi-ssh.json`.
 - Update `STATUS.md` when completing or starting a phase of the migration
   described there, so the next session picks up context correctly.
