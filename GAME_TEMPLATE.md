@@ -2,13 +2,10 @@
 
 This is the agreed design for what a "game" is in the multi-game platform:
 the shared contract every game (Tetris, Snake, Pong, ...) implements, and
-the files/assets each one ships alongside its code. It fleshes out
-`STATUS.md` roadmap items 1 ("extract a game interface") and 2 ("move
-Tetris into its own game module"), plus things not previously tracked
-there: launcher/menu display metadata (name + logo) and audio.
+the files/assets each one ships alongside its code.
 
-The `Game` contract, Tetris's migration behind it, and the menu are done
-(see "Done" below). Audio is still just a plan (see "Still open").
+The `Game` contract, Tetris's migration behind it, the menu, and Snake (the
+second game) are all done. Audio is still just a plan (see "Still open").
 
 ## Decisions already made
 
@@ -21,12 +18,12 @@ The `Game` contract, Tetris's migration behind it, and the menu are done
   hand-written pixel grid literal).
 - **Best-score storage**: one file per game, next to that game's own code
   (not a shared root-level file).
-- **Matrix ownership**: `main.py` creates the one board `Matrix`/banner
-  `Matrix` pair for the whole process and hands them to whichever `Game` is
-  currently active (the menu, or a real game) - hardware only gets
-  initialized once, not once per game. This is why every `Game` subclass's
-  `__init__` takes `(matrix, banner_matrix=None, score_file=None)` rather
-  than building its own matrices.
+- **Matrix/input ownership**: `main.py` creates the one board `Matrix`,
+  banner `Matrix` and `KeyHandler` for the whole process and hands them to
+  whichever `Game` is currently active (the menu, or a real game) -
+  hardware only gets initialized once, not once per game. This is why
+  every `Game` subclass's `__init__` takes `(matrix, banner_matrix=None,
+  key_handler=None, score_file=None)` rather than building its own.
 
 ## Layout
 
@@ -50,6 +47,11 @@ games/
         line_clear.wav
         game_over.wav
     .best_score          # gitignored, created on first run
+  snake/
+    __init__.py        # SnakeGame(Game) - the second game
+    board.py            # snake/apple grid logic
+    drawer.py            # white border box, green snake, red apple
+    .best_score          # gitignored, created on first run
 ```
 
 ## `Game` contract (`games/base.py`)
@@ -64,9 +66,16 @@ class Game(ABC):
     BGM_PATH: str | None = None
     SFX_PATHS: dict[str, str] = {}     # name -> path, e.g. {"line_clear": ...}
 
-    def __init__(self, score_file: str | None = None):
-        self._score_file = score_file or self._default_score_file()
-        self.best_score = self._read_best_score()
+    def __init__(
+        self, matrix: Matrix, banner_matrix: Matrix | None = None,
+        key_handler: KeyHandler | None = None, score_file: str | None = None,
+    ):
+        ...  # build whatever canvases this game needs from matrix/banner_matrix;
+             # store key_handler only if turn_interval needs is_pressed() (see below)
+        super().__init__(score_file)
+    # Game.__init__ itself only takes score_file - it doesn't touch
+    # matrix/banner_matrix/key_handler, those are purely a subclass
+    # constructor convention.
     # _read_best_score/_update_best_score: generalized from the original
     # Tetris-only game/game_board.py (lines 223-236).
 
@@ -136,6 +145,42 @@ No game has a real `logo.png` yet (`TetrisGame.LOGO_PATH` is still the
 box for every game. Adding a `logo.png` under a game's own directory and
 pointing `LOGO_PATH` at it is enough to replace the placeholder - no other
 code changes needed.
+
+## Continuous key-hold state (`KeyHandler.is_pressed`)
+
+`KeyHandler.get_key()` only reports discrete one-shot clicks (a full
+press+release since the last call), which is right for movement/menu
+commands but wrong for a continuous modifier like Snake's run boost: a
+game needs to know a key is down *right now*, for as long as it's held,
+not wait for it to be released.
+
+`KeyHandler.is_pressed(key) -> bool` (default `False`) answers that,
+backed by a `_held_keys` set both backends update on every press/release
+(`hardware/simulator/keys.py`, `hardware/rpi/keys.py`), independent of the
+`_last_key_pressed`/`_key_clicked` one-shot click machinery `get_key()`
+uses. Since `Game.turn_interval` is a property (no way to pass it the
+key_handler per call), a game that needs `is_pressed` stores the
+`key_handler` given to its constructor and queries it from there - see
+`SnakeGame.turn_interval` for the reference usage.
+
+## Snake (`games/snake/`)
+
+The second game, and the first to actually exercise `key_handler` and
+`is_pressed`:
+
+- **Board**: 16x16 grid, arrow keys steer (a 180-degree reversal into your
+  own neck is ignored; moving into the cell the tail is vacating this turn
+  is legal, same as classic Snake). Eating the apple scores 10 points and
+  grows the snake by one cell; hitting a wall or your own body ends the
+  round (`Game.on_round_end`'s default wait-for-keypress screen, same as
+  Tetris - Snake doesn't override it).
+- **Drawing**: a full white box (`Canvas.draw_borders()`'s default,
+  all-four-sides, unlike Tetris's partial `"ulb"`) around the play area,
+  a green snake, a red apple.
+- **Run boost**: holding `Key.P2_UP` ("W" in `sim`) switches
+  `turn_interval` from `NORMAL_TURN_INTERVAL` to the shorter
+  `RUN_TURN_INTERVAL` for as long as it's held, via `is_pressed` (see
+  above) - not a `USED_KEYS`/`get_key()` command.
 
 ## Still open: Audio
 

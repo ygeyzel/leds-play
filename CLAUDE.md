@@ -47,10 +47,11 @@ description below.
   implements (`start`/`advance_turn`/`is_game_over`/`render`/`score`/
   `turn_interval`/`on_round_end`), plus shared per-game best-score file
   handling. By convention every subclass's `__init__` takes `(matrix,
-  banner_matrix=None, score_file=None)`. See `GAME_TEMPLATE.md` for the
-  full per-game template (name/logo/assets/audio) this is part of.
+  banner_matrix=None, key_handler=None, score_file=None)`. See
+  `GAME_TEMPLATE.md` for the full per-game template (name/logo/assets/
+  audio) this is part of.
 - `games/registry.py` — explicit `GAMES` list of games selectable from the
-  menu (Tetris only, so far).
+  menu (`TetrisGame`, `SnakeGame`).
 - `games/menu/__init__.py` — `MenuGame(Game)`: the game-selection screen
   (LEFT/RIGHT cycles `GAMES`, ENTER launches); persists the selection to
   `games/menu/.current_game`.
@@ -65,8 +66,13 @@ description below.
   here (`BOARD_POS_0`, etc.).
 - `games/tetris/__init__.py` — `TetrisGame(Game)`, gluing `board.py` and
   `drawer.py` together behind the `Game` contract.
+- `games/snake/` — the second game, same three-file shape as `tetris/`
+  (`board.py`/`drawer.py`/`__init__.py`). Its run boost (hold `Key.P2_UP`,
+  "W" in `sim`) is the first thing to use `KeyHandler.is_pressed()` for
+  continuous hold state rather than `get_key()`'s one-shot clicks.
 - `hardware/interfaces.py` — hardware-agnostic contracts: `Matrix`,
-  `KeyHandler`, `ScoreDisplay` (ABCs) and the shared `Key` enum.
+  `KeyHandler` (`get_key`/`flush`/`pump`/`is_pressed`), `ScoreDisplay`
+  (ABCs) and the shared `Key` enum.
 - `hardware/canvas.py` — `Canvas`: hardware-agnostic drawing surface used by
   both `games/tetris/drawer.py` and `games/menu/`, works against any
   `Matrix` implementation.
@@ -77,7 +83,9 @@ description below.
   - `leds.py` — `DualMatrix`: driver for two 8x32 WS281x panels wired
     together as one matrix. Imports `rpi_ws281x` at module scope (RPi-only).
   - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)
-    via edge-detect callbacks. Imports `RPi.GPIO` at module scope (RPi-only).
+    via edge-detect callbacks, tracking both one-shot clicks and a
+    `_held_keys` set for `is_pressed()`. Imports `RPi.GPIO` at module scope
+    (RPi-only).
   - `score.py` — `SerialScoreDisplay`: optional serial link to an external
     ESP32 score display (`/dev/ttyUSB0`). Imports `pyserial`.
 - `hardware/simulator/` — tkinter-based backend, no extra deps beyond the
