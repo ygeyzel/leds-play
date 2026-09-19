@@ -40,7 +40,7 @@ games/
     __init__.py        # TetrisGame(Game) - reference migration of the original game/
     board.py            # Tetris rules/state (Board, Block)
     drawer.py            # renders the board onto a given Matrix
-    logo.png             # ** not made yet ** - pixel art, any image editor
+    logo.png             # pixel art, 10x10, cyan T-tetromino
     assets/               # ** not made yet ** - see "Still open" below
       bgm.wav
       sfx/
@@ -51,6 +51,7 @@ games/
     __init__.py        # SnakeGame(Game) - the second game
     board.py            # snake/apple grid logic
     drawer.py            # white border box, green snake, red apple
+    logo.png             # pixel art, 10x10, coiled snake + apple
     .best_score          # gitignored, created on first run
 ```
 
@@ -95,8 +96,11 @@ class Game(ABC):
     def render(self): ...                    # draws to canvases the game made from its own matrix/banner_matrix
 
     def on_game_over_tick(self): ...          # optional animation while waiting after game over; default re-renders
-    def on_round_end(self, key_handler): ...  # called once a round ends; default shows a blink-and-wait-for-keypress
-                                               # screen. MenuGame overrides this to return instantly (no wait screen).
+    def on_round_end(self, key_handler) -> bool:  # called once a round ends; default shows a blink-and-wait-for-
+        ...                                       # keypress screen, returning True if an arrow key ended it (main.py
+                                                   # then restarts this same game) or False for anything else, e.g.
+                                                   # ENTER (back to the menu). MenuGame overrides this to return
+                                                   # instantly - its return value is never consulted.
 ```
 
 `games/registry.py` holds an explicit `GAMES: list[type[Game]]` - no
@@ -128,6 +132,27 @@ filesystem auto-discovery magic.
   left-to-right in the `games/menu/font.py` bitmap font, looping with a
   gap.
 
+## Restarting after game over
+
+`Game.on_round_end` (see the contract above) returns whether an arrow key
+ended its wait screen. `main.py`'s `game_loop` propagates that bool, and
+`main()` uses it: True keeps `active` as the same game instance for
+another `init_game()`/`start()` (fresh score, `best_score` untouched since
+it lives on the instance, not reset by `start()`); False (e.g. ENTER, or
+the "any other key" case) switches `active` back to the menu, same as
+before. This is generic on the base class, so both Tetris and Snake get
+"arrow key on the game-over screen replays instantly" for free, with no
+per-game code.
+
+## Starting directly into a game
+
+`main.py --start-game NAME` (e.g. `--start-game Snake`) skips the menu
+entirely: `main()` constructs that game directly as the initial `active`
+instead of `menu`. `NAME` must exactly match a `Game.NAME` in
+`games.registry.GAMES` - argparse's `choices` handles validation/the error
+message. Once that first game's round ends and you don't restart it
+(anything but an arrow key), control falls through to the menu as usual.
+
 ## Logo
 
 `games/logo.py` owns the only `Pillow` import in the codebase, mirroring
@@ -140,11 +165,13 @@ PNG-awareness leaks into drawing code. `Pillow` is in the base
 `requirements.txt`/`pyproject.toml` (cross-platform, sim-side only for
 now).
 
-No game has a real `logo.png` yet (`TetrisGame.LOGO_PATH` is still the
-`Game` default of `None`), so the menu currently shows a placeholder empty
-box for every game. Adding a `logo.png` under a game's own directory and
-pointing `LOGO_PATH` at it is enough to replace the placeholder - no other
-code changes needed.
+Tetris and Snake both have a real `logo.png` (`games/tetris/logo.png`,
+`games/snake/logo.png`), pointed at by `TetrisGame.LOGO_PATH`/
+`SnakeGame.LOGO_PATH`. A future game without one falls back to the `Game`
+default of `LOGO_PATH = None`, which shows the menu's placeholder empty
+box. Adding a `logo.png` under that game's own directory and pointing
+`LOGO_PATH` at it is enough to replace the placeholder - no other code
+changes needed.
 
 ## Continuous key-hold state (`KeyHandler.is_pressed`)
 
@@ -170,13 +197,14 @@ The second game, and the first to actually exercise `key_handler` and
 
 - **Board**: 16x16 grid, arrow keys steer (a 180-degree reversal into your
   own neck is ignored; moving into the cell the tail is vacating this turn
-  is legal, same as classic Snake). Eating the apple scores 10 points and
+  is legal, same as classic Snake). Eating the apple scores 5 points and
   grows the snake by one cell; hitting a wall or your own body ends the
-  round (`Game.on_round_end`'s default wait-for-keypress screen, same as
-  Tetris - Snake doesn't override it).
+  round.
 - **Drawing**: a full white box (`Canvas.draw_borders()`'s default,
   all-four-sides, unlike Tetris's partial `"ulb"`) around the play area,
-  a green snake, a red apple.
+  a green snake, a red apple. On game over the snake blinks (flips 180
+  degrees around the hue wheel and back, same idea as Tetris's board
+  blink) via `Drawer.blink_board()`/`SnakeGame.on_game_over_tick()`.
 - **Run boost**: holding `Key.P2_UP` ("W" in `sim`) switches
   `turn_interval` from `NORMAL_TURN_INTERVAL` to the shorter
   `RUN_TURN_INTERVAL` for as long as it's held, via `is_pressed` (see

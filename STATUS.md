@@ -149,7 +149,7 @@ just a plan).
   that the `Game` abstraction actually generalizes beyond Tetris:
   - `board.py` — grid-based snake/apple logic: arrow keys steer (a
     180-degree reversal into your own neck is ignored), moving into the
-    cell the tail is vacating is legal, eating the apple scores 10 points
+    cell the tail is vacating is legal, eating the apple scores 5 points
     and grows the snake by one, hitting a wall or your own body ends the
     round.
   - `drawer.py` — white full box border (`Canvas.draw_borders`'s default
@@ -173,6 +173,37 @@ just a plan).
     180 degrees is a no-op), and the run-speed switch; plus a real `sim`
     run confirming rendering, menu selection, and the wall-death ->
     game-over-screen -> menu flow end-to-end.
+- **Real logo art for Tetris and Snake**: `games/tetris/logo.png` (a cyan
+  T-tetromino framed by 2x2 corner squares in the other three piece
+  colors) and `games/snake/logo.png` (a coiled green snake body around a
+  red apple), both 10x10 pixel art with a transparent background,
+  authored directly at the menu's `LOGO_SIZE`. `TetrisGame.LOGO_PATH`/
+  `SnakeGame.LOGO_PATH` now point at them (`os.path.join(os.path.dirname
+  (__file__), "logo.png")`), so the menu shows real art instead of the
+  placeholder box for both games. Verified via `games.logo.load_logo`
+  directly (correct 10x10 shape/transparency) and a `sim`-mode run.
+- **Restart-on-death + Snake's death blink** (design in `GAME_TEMPLATE.md`):
+  - `Game.on_round_end` now returns a bool: True if an arrow key ended the
+    wait screen, False otherwise (e.g. ENTER). `main.py`'s `game_loop`/
+    `main()` use it to either restart the same game instance (fresh score,
+    `best_score` untouched) or fall back to the menu - generic on the base
+    class, so Tetris gets this for free alongside Snake.
+  - Snake now blinks on game over too: `Drawer.blink_board()` flips the
+    snake's color 180 degrees around the hue wheel each
+    `on_game_over_tick()` (green <-> magenta), same idea as Tetris's board
+    blink; `SnakeGame.start()` resets it back to green via
+    `Drawer.reset_colors()` so a restart isn't stuck mid-blink.
+  - Apple is now worth 5 points (was 10).
+  - Verified: an isolated script driving `on_round_end` with a
+    `FakeKeyHandler` (arrow key restarts, ENTER doesn't; score resets to 0
+    while `best_score` survives; the blink color toggles and resets) for
+    both Snake and Tetris, plus a real `sim` run - wall death, the green/
+    magenta blink, and a clean fresh-state restart on an arrow key.
+- **`--start-game NAME` CLI flag**: skips the menu and goes straight into
+  the named game (`main.py sim --start-game Snake`); `NAME` must match a
+  `Game.NAME` in `games.registry.GAMES` exactly (argparse `choices`
+  validates it). Falls back to the menu once that game's round ends
+  without an arrow-key restart.
 
 ## In progress
 
@@ -185,10 +216,7 @@ Roughly in the order they'll likely need to happen:
 1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
    and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
    game defines `BGM_PATH`/`SFX_PATHS` yet.
-2. **Real logo art**: every game still shows the menu's placeholder box;
-   authoring an actual `logo.png` per game (starting with Tetris) is just
-   content, no code changes needed once one exists (see `GAME_TEMPLATE.md`).
-3. **Expand the hardware config**: **partially done, sim side only** (see
+2. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
    - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
@@ -201,7 +229,7 @@ Roughly in the order they'll likely need to happen:
    - Neither Tetris nor Snake render anything into the banner (the menu
      does; both just leave it blank while playing) or react to the 2nd
      D-pad beyond Snake's `Key.P2_UP` run boost.
-4. **Implement More Games** ...
+3. **Implement More Games** ...
 
 ## Open questions for the user
 
