@@ -1,0 +1,46 @@
+from typing import Optional
+
+from games.base import Game
+from games.snake.board import NORMAL_TURN_INTERVAL, RUN_TURN_INTERVAL
+from games.snake.drawer import Drawer
+from hardware.interfaces import Key, KeyHandler, Matrix
+
+
+class SnakeGame(Game):
+    NAME = "Snake"
+    # P2_UP ("W" in sim) is read continuously via KeyHandler.is_pressed()
+    # as a run/boost modifier, not a discrete command via get_key().
+    USED_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT, Key.P2_UP})
+
+    def __init__(
+        self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
+        key_handler: Optional[KeyHandler] = None, score_file: str = None,
+    ):
+        self._drawer = Drawer(matrix, banner_matrix)
+        self._board = self._drawer.board
+        self._key_handler = key_handler
+
+        super().__init__(score_file)
+
+    def start(self):
+        self._board.start()
+
+    @property
+    def score(self) -> int:
+        return self._board.score
+
+    @property
+    def turn_interval(self) -> float:
+        running = self._key_handler is not None and self._key_handler.is_pressed(Key.P2_UP)
+        return RUN_TURN_INTERVAL if running else NORMAL_TURN_INTERVAL
+
+    def advance_turn(self, key: Key):
+        self._board.advance_turn(key)
+        self._update_best_score()
+
+    def is_game_over(self) -> bool:
+        return self._board.is_game_over()
+
+    def render(self):
+        self._drawer.clear()
+        self._drawer.draw_board()

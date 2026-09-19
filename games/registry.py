@@ -1,6 +1,6 @@
+from games.snake import SnakeGame
 from games.tetris import TetrisGame
 
-# Explicit, no filesystem auto-discovery. Order will matter once a
-# game-selection launcher exists (STATUS.md); for now `main.py` just runs
-# GAMES[0].
-GAMES = [TetrisGame]
+# Explicit, no filesystem auto-discovery. This is the order the menu
+# cycles through with LEFT/RIGHT.
+GAMES = [TetrisGame, SnakeGame]
