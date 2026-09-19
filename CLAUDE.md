@@ -27,25 +27,36 @@ description below.
   `hardware/factory.py`.
 - A game abstraction so `main.py` can run any game (Tetris, Snake, Pong, ...)
   through a common contract, rather than being hardwired to Tetris like it
-  is today: **not started** — see `STATUS.md`.
+  is today: **partially done** — see `STATUS.md` and `GAME_TEMPLATE.md`; the
+  `Game` contract exists and Tetris runs behind it, but there's still no
+  game-selection launcher (`main.py` just runs the first registered game).
 - Hardware is meant to grow over time (more LEDs/pixels, more buttons), so
   layout/pin/key-count details should live in config, not scattered literal
   constants: **partially done** — the matrix/pin layout constants still live
-  in `game/drawer.py` and haven't been made configurable yet.
+  in `games/tetris/drawer.py` and haven't been made configurable yet.
 
 ## Current code
 
-- `main.py` — game loop, currently hardwired to the Tetris `Board`/`Drawer`,
-  parameterized by an `rpi`/`sim` mode arg.
-- `game/game_board.py` — Tetris rules/state (`Board`, `Block`); imports the
-  shared `Key` enum from `hardware/interfaces.py`.
-- `game/drawer.py` — draws the Tetris board onto a `Matrix`; Tetris- and
-  hardware-specific layout constants live here (`BOARD_POS_0`, `MATRIX_DPIN`,
-  etc.). Builds its matrix via `hardware.factory.create_matrix(mode, ...)`.
+- `main.py` — game loop; runs the first game in `games/registry.py`'s
+  `GAMES` list (just Tetris so far), parameterized by an `rpi`/`sim` mode
+  arg. No game-selection launcher yet.
+- `games/base.py` — the `Game` ABC every game implements
+  (`start`/`advance_turn`/`is_game_over`/`render`/`score`/`turn_interval`),
+  plus shared per-game best-score file handling. See `GAME_TEMPLATE.md` for
+  the full per-game template (name/logo/assets/audio) this is part of.
+- `games/registry.py` — explicit `GAMES` list of playable games.
+- `games/tetris/board.py` — Tetris rules/state (`Board`, `Block`); imports
+  the shared `Key` enum from `hardware/interfaces.py`.
+- `games/tetris/drawer.py` — draws the Tetris board onto a `Matrix`; Tetris-
+  and hardware-specific layout constants live here (`BOARD_POS_0`,
+  `MATRIX_DPIN`, etc.). Builds its matrix via
+  `hardware.factory.create_matrix(mode, ...)`.
+- `games/tetris/__init__.py` — `TetrisGame(Game)`, gluing `board.py` and
+  `drawer.py` together behind the `Game` contract.
 - `hardware/interfaces.py` — hardware-agnostic contracts: `Matrix`,
   `KeyHandler`, `ScoreDisplay` (ABCs) and the shared `Key` enum.
 - `hardware/canvas.py` — `Canvas`: hardware-agnostic drawing surface used by
-  `game/drawer.py`, works against any `Matrix` implementation.
+  `games/tetris/drawer.py`, works against any `Matrix` implementation.
 - `hardware/factory.py` — `create_matrix`/`create_key_handler`/
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
@@ -73,9 +84,9 @@ description below.
   clean run of these as CI-style verification, and don't try to run them
   without a Pi.
 
-The game abstraction (multi-game `main.py`) hasn't been built yet — don't
-deepen the Tetris/`main.py` coupling unless that's specifically the task at
-hand.
+The game-selection launcher (multi-game `main.py`) hasn't been built yet —
+don't deepen the single-game (`GAMES[0]`) coupling in `main.py` unless
+that's specifically the task at hand.
 
 ## Conventions
 

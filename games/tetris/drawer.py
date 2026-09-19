@@ -1,6 +1,6 @@
 from itertools import product
 from time import sleep
-from game.game_board import Board
+from games.tetris.board import Board
 from common.common import add_positions, BOARD_DIMS
 from hardware.factory import create_banner_matrix, create_matrix
 

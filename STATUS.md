@@ -10,14 +10,17 @@ support a bigger/more flexible hardware setup (more pixels, more buttons).
 
 See `CLAUDE.md` for architecture/contributor notes, `README.md` for
 user-facing setup instructions, and `GAME_TEMPLATE.md` for the agreed
-design of the per-game contract/template referenced in roadmap item 1
-below.
+design of the per-game contract/template (`Game` ABC and Tetris's
+migration behind it are done; the launcher/logo/audio pieces are roadmap
+item 1 below).
 
 ## Completed
 
 - Imported the working `TetLED` codebase as the starting point:
-  - `game/game_board.py` — Tetris board/piece logic.
-  - `game/drawer.py` — renders the Tetris board to the LED matrix.
+  - `game/game_board.py` — Tetris board/piece logic (later moved to
+    `games/tetris/board.py`, see below).
+  - `game/drawer.py` — renders the Tetris board to the LED matrix (later
+    moved to `games/tetris/drawer.py`, see below).
   - `common/common.py` — shared position/color types, `BOARD_DIMS`.
   - `main.py` — Tetris game loop wiring the pieces above together.
   - Manual/interactive hardware tests in `tests/` (`test_canvas.py`,
@@ -30,7 +33,7 @@ below.
   the `Matrix` / `KeyHandler` / `ScoreDisplay` ABCs and the shared `Key`
   enum; `hardware/canvas.py` holds the hardware-agnostic `Canvas` drawing
   surface (moved out of the old `hardware/leds.py`, unchanged otherwise).
-  Game code (`game/drawer.py`, `game/game_board.py`) only imports from
+  Game code (now `games/tetris/`, see below) only imports from
   `hardware.interfaces`/`hardware.factory`, never `RPi.GPIO`/`rpi_ws281x`
   directly.
 - **`rpi` backend** (`hardware/rpi/`): `leds.py` (`DualMatrix`), `keys.py`
@@ -85,6 +88,24 @@ below.
     print a warning and fall back to the old rpi behavior (or `None` for
     the banner) if run with non-default flags in `rpi` mode, rather than
     crashing.
+- **Game interface extracted + Tetris migrated behind it** (roadmap items 1
+  and 2 below, design in `GAME_TEMPLATE.md`):
+  - `games/base.py` — the `Game` ABC (`start`/`advance_turn`/
+    `is_game_over`/`render`/`score`/`turn_interval`, plus a default
+    `on_game_over_tick` and shared per-game best-score file read/write).
+  - `games/tetris/` — Tetris moved out of the old `game/` package:
+    `board.py` (was `game/game_board.py`, best-score logic removed — now
+    handled generically by `Game`), `drawer.py` (was `game/drawer.py`,
+    unchanged otherwise), `__init__.py` (`TetrisGame(Game)`, gluing board +
+    drawer together and implementing the contract). Best score now persists
+    to `games/tetris/.best_score` instead of a root-level file;
+    `.gitignore`'s `.best_score` entry became `**/.best_score` accordingly.
+  - `games/registry.py` — explicit `GAMES` list (just `TetrisGame` so far);
+    `main.py` runs `GAMES[0]` directly since the actual game-selection
+    launcher (menu/CLI picker) is still future work, see item 1 below.
+  - Not part of this migration: the logo/audio pieces of `GAME_TEMPLATE.md`
+    (`LOGO_PATH` is `None` on every game for now) and the launcher UI
+    itself — both still open.
 
 ## In progress
 
@@ -94,33 +115,28 @@ Nothing active right now — see "Not started yet" for what's next.
 
 Roughly in the order they'll likely need to happen:
 
-1. **Extract a game interface.** `game/game_board.py` and `game/drawer.py`
-   are Tetris-specific and drawing is coupled directly to the board model.
-   Need a common `Game` contract (start/advance_turn/is_game_over/render or
-   similar) so `main.py` can run any registered game, plus a game-selection
-   entry point (menu, or CLI arg). See `GAME_TEMPLATE.md` for the full
-   design: the `Game` ABC, the `games/<name>/` layout (logo, assets,
-   per-game best-score file), and new audio/logo-loading contracts —
-   agreed but not yet built.
-2. **Move Tetris into its own game module** (e.g. `games/tetris/`) behind
-   that new interface, as the reference implementation.
-3. **Expand the hardware config**: **partially done, sim side only** (see
+1. **Build the game-selection launcher.** `games/registry.py`'s `GAMES`
+   list exists, but `main.py` still just runs `GAMES[0]` — need an actual
+   menu/CLI picker so more than one game is reachable, plus the
+   logo/audio pieces of `GAME_TEMPLATE.md` (PNG logo loading, the
+   `AudioPlayer` contract + sim backend) that a launcher would show/use.
+2. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
    - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
      panels / 4 buttons / no banner) — needs real panel-count wiring math
      generalized in `DualMatrix`, GPIO pins picked for the 5 new buttons
      and a banner strip, and a rpi banner-matrix implementation.
-   - `BOARD_POS_0` etc. in `game/drawer.py` are still hardcoded Tetris
-     layout constants (unaffected by the bigger matrix — Tetris just gets
-     extra unused columns to the right for now).
-   - Nothing renders into the banner yet — that's step 4 below (games
+   - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
+     Tetris layout constants (unaffected by the bigger matrix — Tetris just
+     gets extra unused columns to the right for now).
+   - Nothing renders into the banner yet — that's the next item (games
      need to be updated to actually use the bigger board/banner/buttons).
-4. **Update the games to use the expanded hardware** — Tetris doesn't
+3. **Update the games to use the expanded hardware** — Tetris doesn't
    render into the banner or react to the 2nd D-pad/`Key.ENTER` yet.
-5. **Implement Snake** as the second game, to validate the abstraction
-   actually generalizes.
-6. **Implement More Games** ...
+4. **Implement Snake** as the second game, to validate the `Game`
+   abstraction actually generalizes.
+5. **Implement More Games** ...
 
 ## Open questions for the user
 

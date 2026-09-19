@@ -1,8 +1,9 @@
 import argparse
 from time import sleep, time
 
-from game.drawer import NUM_OF_MATRICES, SIZE_OF_BANNER, Drawer
-from game.game_board import Board
+from games.base import Game
+from games.registry import GAMES
+from games.tetris.drawer import NUM_OF_MATRICES, SIZE_OF_BANNER
 from hardware.factory import create_key_handler, create_score_display
 from hardware.interfaces import Key, KeyHandler
 
@@ -23,17 +24,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def init_game(board: Board, key_handler: KeyHandler):
-    board.start()
+def init_game(game: Game, key_handler: KeyHandler):
+    game.start()
     key_handler.flush()
 
 
-def game_over(drawer: Drawer, key_handler: KeyHandler):
+def game_over(game: Game, key_handler: KeyHandler):
     key_handler.flush()
     end_time = time()
 
     while key_handler.get_key() == Key.NO_KEY or time() - end_time < 2:
-        drawer.blink_board()
+        game.on_game_over_tick()
         sleep(0.2)
 
 
@@ -51,37 +52,35 @@ def _sleep(seconds: float, key_handler: KeyHandler):
         sleep(min(PUMP_INTERVAL, remaining))
 
 
-def game_loop(score_display, board: Board, drawer: Drawer, key_handler: KeyHandler):
-    drawer.draw_board()
+def game_loop(score_display, game: Game, key_handler: KeyHandler):
+    game.render()
 
-    while not board.is_game_over():
-        dt = 1 / board.level
-        _sleep(dt, key_handler)
+    while not game.is_game_over():
+        _sleep(game.turn_interval, key_handler)
 
         key = key_handler.get_key()
-        board.advance_turn(key)
+        game.advance_turn(key)
+        game.render()
+        score_display.send_score(game.score, game.best_score)
 
-        drawer.clear()
-        drawer.draw_board()
-        score_display.send_score(board.score, board.best_score)
-
-    game_over(drawer, key_handler)
+    game_over(game, key_handler)
 
 
 def main():
     args = parse_args()
     mode = args.mode
 
-    drawer = Drawer(mode, args.num_of_matrices, args.size_of_banner)
-    board = drawer.board
-    board.burn_animation = drawer.burn_animation
+    # A real game-selection launcher (picking from GAMES) is future work,
+    # see STATUS.md - for now the platform still only runs one game.
+    game_cls = GAMES[0]
+    game = game_cls(mode, args.num_of_matrices, args.size_of_banner)
 
     key_handler = create_key_handler(mode)
 
     with create_score_display(mode) as score_display:
         while True:
-            init_game(board, key_handler)
-            game_loop(score_display, board, drawer, key_handler)
+            init_game(game, key_handler)
+            game_loop(score_display, game, key_handler)
 
 
 if __name__ == "__main__":
