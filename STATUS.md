@@ -8,8 +8,10 @@ platform (Tetris, Snake, Pong, ...) that can run either on real hardware
 (`rpi` mode) or on a PC with a graphical simulator (`simulator` mode), and to
 support a bigger/more flexible hardware setup (more pixels, more buttons).
 
-See `CLAUDE.md` for architecture/contributor notes and `README.md` for
-user-facing setup instructions.
+See `CLAUDE.md` for architecture/contributor notes, `README.md` for
+user-facing setup instructions, and `GAME_TEMPLATE.md` for the agreed
+design of the per-game contract/template referenced in roadmap item 1
+below.
 
 ## Completed
 
@@ -96,7 +98,10 @@ Roughly in the order they'll likely need to happen:
    are Tetris-specific and drawing is coupled directly to the board model.
    Need a common `Game` contract (start/advance_turn/is_game_over/render or
    similar) so `main.py` can run any registered game, plus a game-selection
-   entry point (menu, or CLI arg).
+   entry point (menu, or CLI arg). See `GAME_TEMPLATE.md` for the full
+   design: the `Game` ABC, the `games/<name>/` layout (logo, assets,
+   per-game best-score file), and new audio/logo-loading contracts —
+   agreed but not yet built.
 2. **Move Tetris into its own game module** (e.g. `games/tetris/`) behind
    that new interface, as the reference implementation.
 3. **Expand the hardware config**: **partially done, sim side only** (see
