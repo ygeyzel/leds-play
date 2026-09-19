@@ -19,6 +19,7 @@ TEXT_COLOR_HSV = (200, 0.7, 0.3)
 
 TEXT_GAP = 8  # blank banner columns between repeats of the scrolling name
 TICK_INTERVAL = 0.07  # seconds per menu animation tick (~14fps scroll)
+ARROW_BLINK_TICKS = 3  # ~0.2s the clicked arrow blanks out once, same color otherwise
 
 # Boolean shapes for Canvas.draw_shape, same convention as game/tetris's
 # BLOCK_SHAPES: a filled-in triangle pointing the way the D-pad will move
@@ -63,6 +64,8 @@ class MenuGame(Game):
         self._logo_cache = {}
         self._launched = False
         self._scroll_x = 0
+        self._left_blink_ticks = 0
+        self._right_blink_ticks = 0
         self._load_selected_text()
 
         super().__init__(score_file)
@@ -126,13 +129,17 @@ class MenuGame(Game):
             self._index = (self._index - 1) % len(self._games)
             self._write_current_index()
             self._load_selected_text()
+            self._left_blink_ticks = ARROW_BLINK_TICKS
         elif key == Key.RIGHT:
             self._index = (self._index + 1) % len(self._games)
             self._write_current_index()
             self._load_selected_text()
+            self._right_blink_ticks = ARROW_BLINK_TICKS
         elif key == Key.ENTER:
             self._launched = True
 
+        self._left_blink_ticks = max(0, self._left_blink_ticks - 1)
+        self._right_blink_ticks = max(0, self._right_blink_ticks - 1)
         self._scroll_x = (self._scroll_x + 1) % (self._text_width + TEXT_GAP)
 
     def is_game_over(self) -> bool:
@@ -144,14 +151,20 @@ class MenuGame(Game):
     def render(self):
         self._matrix.clear()
         self._draw_logo()
-        self._left_arrow_canvas.draw_shape(LEFT_ARROW_SHAPE, ARROW_COLOR_HSV)
-        self._right_arrow_canvas.draw_shape(RIGHT_ARROW_SHAPE, ARROW_COLOR_HSV)
+        self._draw_arrow(self._left_arrow_canvas, LEFT_ARROW_SHAPE, self._left_blink_ticks)
+        self._draw_arrow(self._right_arrow_canvas, RIGHT_ARROW_SHAPE, self._right_blink_ticks)
         self._matrix.show()
 
         if self._banner_matrix:
             self._banner_matrix.clear()
             self._draw_banner_text()
             self._banner_matrix.show()
+
+    @staticmethod
+    def _draw_arrow(canvas, shape, blink_ticks: int):
+        if blink_ticks <= 0:
+            canvas.draw_shape(shape, ARROW_COLOR_HSV)
+        # else: skip drawing - the arrow blanks out once, same color as always
 
     def _draw_logo(self):
         game_cls = self.selected_game_cls
