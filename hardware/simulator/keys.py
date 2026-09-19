@@ -60,6 +60,7 @@ class SimulatorKeyHandler(KeyHandler):
         self._window = get_window()
         self._last_key_pressed = Key.NO_KEY
         self._key_clicked = Key.NO_KEY
+        self._held_keys = set()
 
         self._buttons = {}
         self._labels = {}
@@ -103,10 +104,12 @@ class SimulatorKeyHandler(KeyHandler):
         key = _KEYSYM_TO_KEY[event.keysym]
         self._set_button_pressed(key, True)
         self._last_key_pressed = key
+        self._held_keys.add(key)
 
     def _on_release(self, event):
         key = _KEYSYM_TO_KEY[event.keysym]
         self._set_button_pressed(key, False)
+        self._held_keys.discard(key)
         if key == self._last_key_pressed:
             self._key_clicked = key
             self._last_key_pressed = Key.NO_KEY
@@ -127,3 +130,6 @@ class SimulatorKeyHandler(KeyHandler):
 
     def pump(self):
         self._window.pump()
+
+    def is_pressed(self, key: Key) -> bool:
+        return key in self._held_keys

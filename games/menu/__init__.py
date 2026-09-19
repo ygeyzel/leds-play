@@ -2,7 +2,7 @@ import inspect
 import os
 from typing import List, Optional
 
-from games.base import Game
+from games.base import Game, default_score_file, read_best_score
 from games.logo import load_logo
 from games.menu.font import FONT_HEIGHT, text_shape
 from games.registry import GAMES
@@ -46,9 +46,11 @@ class MenuGame(Game):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
-        games: Optional[List[type]] = None, current_game_file: str = None,
-        score_file: str = None,
+        key_handler=None, games: Optional[List[type]] = None,
+        current_game_file: str = None, score_file: str = None,
     ):
+        # key_handler unused - the menu only needs get_key()'s one-shot
+        # clicks, accepted for the shared Game constructor convention.
         self._matrix = matrix
         self._banner_matrix = banner_matrix
         self._games = games if games is not None else GAMES
@@ -116,6 +118,17 @@ class MenuGame(Game):
     @property
     def score(self) -> int:
         return 0
+
+    @property
+    def best_score(self) -> int:
+        """The selected game's best score, not the menu's own (it never
+        scores) - shown on the score display while browsing, so it
+        updates live as LEFT/RIGHT change the selection."""
+        return read_best_score(default_score_file(self.selected_game_cls))
+
+    @best_score.setter
+    def best_score(self, value):
+        pass  # Game.__init__ assigns this; the menu's is always derived, see the getter
 
     @property
     def turn_interval(self) -> float:

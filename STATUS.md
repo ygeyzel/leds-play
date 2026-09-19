@@ -88,8 +88,8 @@ just a plan).
     print a warning and fall back to the old rpi behavior (or `None` for
     the banner) if run with non-default flags in `rpi` mode, rather than
     crashing.
-- **Game interface extracted + Tetris migrated behind it** (roadmap items 1
-  and 2 below, design in `GAME_TEMPLATE.md`):
+- **Game interface extracted + Tetris migrated behind it** (design in
+  `GAME_TEMPLATE.md`):
   - `games/base.py` — the `Game` ABC (`start`/`advance_turn`/
     `is_game_over`/`render`/`score`/`turn_interval`, plus a default
     `on_game_over_tick` and shared per-game best-score file read/write).
@@ -100,9 +100,9 @@ just a plan).
     drawer together and implementing the contract). Best score now persists
     to `games/tetris/.best_score` instead of a root-level file;
     `.gitignore`'s `.best_score` entry became `**/.best_score` accordingly.
-  - `games/registry.py` — explicit `GAMES` list (just `TetrisGame` so far);
-    `main.py` runs `GAMES[0]` directly since the actual game-selection
-    launcher (menu/CLI picker) is still future work, see item 1 below.
+  - `games/registry.py` — explicit `GAMES` list (just `TetrisGame` at this
+    point); `main.py` ran `GAMES[0]` directly since the actual
+    game-selection launcher didn't exist yet - see the menu entry below.
   - Not part of this migration: the logo/audio pieces of `GAME_TEMPLATE.md`
     (`LOGO_PATH` is `None` on every game for now) and the launcher UI
     itself — both done in the next entry below.
@@ -123,8 +123,9 @@ just a plan).
     `games/tetris/drawer.py`) so the one real `Matrix`/banner `Matrix` pair
     is shared between the menu and every game instead of being rebuilt
     (and, on real hardware, re-initialized) each time. Every `Game`
-    subclass's `__init__` now takes `(matrix, banner_matrix=None,
-    score_file=None)` by convention.
+    subclass's `__init__` took `(matrix, banner_matrix=None,
+    score_file=None)` by convention at this point (a `key_handler` param
+    was added later - see the Snake entry below).
   - `games/logo.py` added: decodes a game's `logo.png` (Pillow, now a base
     dependency) into the pixel grid the menu draws centered on the board
     matrix, flanked by left/right arrows; falls back to a placeholder empty
@@ -144,6 +145,77 @@ just a plan).
   via a real "ENTER doesn't start the game" report, reproduced with
   synthetic X key events. `get_key()` now only clears `_key_clicked`;
   `flush()` (called at round boundaries) still resets both.
+- **Implemented Snake** (`games/snake/`) as the second game, validating
+  that the `Game` abstraction actually generalizes beyond Tetris:
+  - `board.py` — grid-based snake/apple logic: arrow keys steer (a
+    180-degree reversal into your own neck is ignored), moving into the
+    cell the tail is vacating is legal, eating the apple scores 5 points
+    and grows the snake by one, hitting a wall or your own body ends the
+    round.
+  - `drawer.py` — white full box border (`Canvas.draw_borders`'s default
+    all-four-sides mode, unlike Tetris's partial one), green snake, red
+    apple.
+  - Holding the run key (`Key.P2_UP`, "W" in `sim`) speeds up play a bit.
+    This needed a new capability, since `get_key()` only reports discrete
+    one-shot clicks: `KeyHandler.is_pressed(key)` (new, defaults to
+    `False`, implemented in both backends via a `_held_keys` set updated
+    on press/release) reports whether a key is down *right now*, checked
+    every tick by `SnakeGame.turn_interval`. This is also why every
+    `Game` subclass's constructor convention grew a third argument -
+    `(matrix, banner_matrix=None, key_handler=None, score_file=None)` -
+    `main.py` and `MenuGame` now pass the shared `KeyHandler` through the
+    same way they already pass the shared matrices; Tetris/the menu
+    accept and ignore it.
+  - Registered in `games/registry.py` (`GAMES = [TetrisGame, SnakeGame]`)
+    - reachable from the menu today.
+  - Verified: an isolated logic script covering apple-eating/scoring,
+    wall-collision death, self-collision death (and that reversing
+    180 degrees is a no-op), and the run-speed switch; plus a real `sim`
+    run confirming rendering, menu selection, and the wall-death ->
+    game-over-screen -> menu flow end-to-end.
+- **Real logo art for Tetris and Snake**: `games/tetris/logo.png` (a cyan
+  T-tetromino framed by 2x2 corner squares in the other three piece
+  colors) and `games/snake/logo.png` (a coiled green snake body around a
+  red apple), both 10x10 pixel art with a transparent background,
+  authored directly at the menu's `LOGO_SIZE`. `TetrisGame.LOGO_PATH`/
+  `SnakeGame.LOGO_PATH` now point at them (`os.path.join(os.path.dirname
+  (__file__), "logo.png")`), so the menu shows real art instead of the
+  placeholder box for both games. Verified via `games.logo.load_logo`
+  directly (correct 10x10 shape/transparency) and a `sim`-mode run.
+- **Restart-on-death + Snake's death blink** (design in `GAME_TEMPLATE.md`):
+  - `Game.on_round_end` now returns a bool: True if an arrow key ended the
+    wait screen, False otherwise (e.g. ENTER). `main.py`'s `game_loop`/
+    `main()` use it to either restart the same game instance (fresh score,
+    `best_score` untouched) or fall back to the menu - generic on the base
+    class, so Tetris gets this for free alongside Snake.
+  - Snake now blinks on game over too: `Drawer.blink_board()` flips the
+    snake's color 180 degrees around the hue wheel each
+    `on_game_over_tick()` (green <-> magenta), same idea as Tetris's board
+    blink; `SnakeGame.start()` resets it back to green via
+    `Drawer.reset_colors()` so a restart isn't stuck mid-blink.
+  - Apple is now worth 5 points (was 10).
+  - Verified: an isolated script driving `on_round_end` with a
+    `FakeKeyHandler` (arrow key restarts, ENTER doesn't; score resets to 0
+    while `best_score` survives; the blink color toggles and resets) for
+    both Snake and Tetris, plus a real `sim` run - wall death, the green/
+    magenta blink, and a clean fresh-state restart on an arrow key.
+- **`--start-game NAME` CLI flag**: skips the menu and goes straight into
+  the named game (`main.py sim --start-game Snake`); `NAME` must match a
+  `Game.NAME` in `games.registry.GAMES` exactly (argparse `choices`
+  validates it). Falls back to the menu once that game's round ends
+  without an arrow-key restart.
+- **Menu shows the selected game's best score**: `games/base.py`'s
+  per-game best-score file helpers (`default_score_file`/
+  `read_best_score`) became module-level functions (previously private
+  `Game` methods) so they work from a game *class* alone, no instance
+  needed. `MenuGame.best_score` is now a property that looks up
+  `selected_game_cls`'s best score this way (its setter is a no-op -
+  `Game.__init__` still assigns `self.best_score` once, harmlessly);
+  `main.py`'s existing `score_display.send_score(game.score,
+  game.best_score)` call already runs every menu tick, so the display
+  updates live as LEFT/RIGHT change the selection. Verified with an
+  isolated script (switching `MenuGame._index` reads back the right
+  game's score) and a real `sim` run.
 
 ## In progress
 
@@ -156,9 +228,12 @@ Roughly in the order they'll likely need to happen:
 1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
    and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
    game defines `BGM_PATH`/`SFX_PATHS` yet.
-2. **Real logo art**: every game still shows the menu's placeholder box;
-   authoring an actual `logo.png` per game (starting with Tetris) is just
-   content, no code changes needed once one exists (see `GAME_TEMPLATE.md`).
+2. **Simulator pause/mute keys**: add `P` (pause the game loop) and `M`
+   (mute/unmute music) to `hardware/simulator/keys.py`, sim mode only.
+   Global controls, not a per-game command, so probably handled directly
+   in `main.py`'s `game_loop` (like the existing `Key.ENTER`-to-menu
+   handling) rather than via a game's `USED_KEYS`/`advance_turn`. Mute is
+   a no-op until item 1 (audio) exists.
 3. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
@@ -169,12 +244,10 @@ Roughly in the order they'll likely need to happen:
    - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
      Tetris layout constants (unaffected by the bigger matrix — Tetris just
      gets extra unused columns to the right for now).
-   - Tetris itself still doesn't render anything into the banner (the menu
-     does; Tetris just leaves it blank while playing) or react to the 2nd
-     D-pad.
-4. **Implement Snake** as the second game, to validate the `Game`
-   abstraction actually generalizes.
-5. **Implement More Games** ...
+   - Neither Tetris nor Snake render anything into the banner (the menu
+     does; both just leave it blank while playing) or react to the 2nd
+     D-pad beyond Snake's `Key.P2_UP` run boost.
+4. **Implement More Games** ...
 
 ## Open questions for the user
 
