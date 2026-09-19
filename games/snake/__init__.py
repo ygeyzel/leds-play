@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from games.base import Game
@@ -8,6 +9,7 @@ from hardware.interfaces import Key, KeyHandler, Matrix
 
 class SnakeGame(Game):
     NAME = "Snake"
+    LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo.png")
     # P2_UP ("W" in sim) is read continuously via KeyHandler.is_pressed()
     # as a run/boost modifier, not a discrete command via get_key().
     USED_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT, Key.P2_UP})
@@ -24,6 +26,7 @@ class SnakeGame(Game):
 
     def start(self):
         self._board.start()
+        self._drawer.reset_colors()
 
     @property
     def score(self) -> int:
@@ -44,3 +47,6 @@ class SnakeGame(Game):
     def render(self):
         self._drawer.clear()
         self._drawer.draw_board()
+
+    def on_game_over_tick(self):
+        self._drawer.blink_board()

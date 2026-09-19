@@ -6,6 +6,9 @@ from time import sleep, time
 from hardware.interfaces import Key, KeyHandler
 
 
+RESTART_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
+
+
 class Game(ABC):
     """Contract every game implements, so `main.py`'s menu can run any of
     them uniformly. See GAME_TEMPLATE.md for the full per-game template
@@ -22,7 +25,7 @@ class Game(ABC):
     most games can ignore it."""
 
     NAME: str
-    LOGO_PATH: str = None  # not implemented yet, see GAME_TEMPLATE.md step 4
+    LOGO_PATH: str = None  # path to this game's logo.png; None = menu placeholder box
     USED_KEYS: frozenset
 
     BGM_PATH = None
@@ -82,15 +85,24 @@ class Game(ABC):
         blink animation). Defaults to a plain re-render."""
         self.render()
 
-    def on_round_end(self, key_handler: KeyHandler):
+    def on_round_end(self, key_handler: KeyHandler) -> bool:
         """Called once a round ends naturally (`is_game_over()` became
         true). Default: wait on a blinking screen (via `on_game_over_tick`)
-        for a keypress, with a minimum pause, before control returns to the
-        menu. The menu itself overrides this to return immediately - it has
-        no "game over" of its own to show off."""
+        for a keypress, with a minimum pause. Returns True if an arrow key
+        was what ended the wait - `main.py` then restarts this same game
+        with a fresh score - or False for anything else (e.g. ENTER),
+        which returns to the menu instead. The menu itself overrides this
+        to return immediately - it has no "game over" of its own to show
+        off, and its return value is never consulted."""
         key_handler.flush()
         end_time = time()
+        last_key = Key.NO_KEY
 
-        while key_handler.get_key() == Key.NO_KEY or time() - end_time < 2:
+        while last_key == Key.NO_KEY or time() - end_time < 2:
+            key = key_handler.get_key()
+            if key != Key.NO_KEY:
+                last_key = key
             self.on_game_over_tick()
             sleep(0.2)
+
+        return last_key in RESTART_KEYS

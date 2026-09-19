@@ -20,16 +20,32 @@ class Drawer:
             BOARD_POS_0, add_positions(board.dimensions, (2, 2)))
 
         self.board = board
+        self._snake_color = SNAKE_COLOR_HSV
+
+    def reset_colors(self):
+        """Back to the normal snake color - call at the start of a round,
+        undoing any blink_board() color shift left over from a previous
+        game over."""
+        self._snake_color = SNAKE_COLOR_HSV
 
     def draw_board(self):
         self._board_canvas.draw_borders(BORDER_COLOR_HSV)
 
         for segment in self.board.snake:
-            self._board_canvas[add_positions(segment, (1, 1))] = SNAKE_COLOR_HSV
+            self._board_canvas[add_positions(segment, (1, 1))] = self._snake_color
 
         self._board_canvas[add_positions(self.board.apple, (1, 1))] = APPLE_COLOR_HSV
 
         self.show()
+
+    def blink_board(self):
+        """Flip the snake's color 180 degrees around the hue wheel and
+        redraw - called repeatedly on game over (see SnakeGame.
+        on_game_over_tick) so the snake visibly flashes, same idea as
+        Tetris's board blink."""
+        hue, saturation, value = self._snake_color
+        self._snake_color = ((hue + 180) % 360, saturation, value)
+        self.draw_board()
 
     def show(self):
         self._matrix.show()

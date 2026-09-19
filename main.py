@@ -3,6 +3,7 @@ from time import sleep, time
 
 from games.base import Game
 from games.menu import MenuGame
+from games.registry import GAMES
 from hardware.factory import create_banner_matrix, create_key_handler, create_matrix, create_score_display
 from hardware.interfaces import Key, KeyHandler
 
@@ -34,6 +35,11 @@ def parse_args():
         "--size-of-banner", type=int, default=SIZE_OF_BANNER,
         help="number of chained banner LED panels (each 8 rows x 32 cols); "
              "default: %(default)s. rpi mode doesn't support a banner yet.")
+    parser.add_argument(
+        "--start-game", metavar="NAME", choices=[game_cls.NAME for game_cls in GAMES],
+        default=None,
+        help="skip the menu and go straight into this game (by name); "
+             "default: start at the menu")
     return parser.parse_args()
 
 
@@ -70,21 +76,26 @@ def _sleep(seconds: float, key_handler: KeyHandler):
         sleep(min(PUMP_INTERVAL, remaining))
 
 
-def game_loop(score_display, game: Game, key_handler: KeyHandler):
+def game_loop(score_display, game: Game, key_handler: KeyHandler) -> bool:
+    """Runs one round of `game`. Returns True if the player asked to
+    restart the same game from its game-over screen (an arrow key), False
+    if control should go back to the menu instead."""
+
     game.render()
+    score_display.send_score(game.score, game.best_score)
 
     while not game.is_game_over():
         _sleep(game.turn_interval, key_handler)
 
         key = key_handler.get_key()
         if key == Key.ENTER and Key.ENTER not in game.USED_KEYS:
-            return  # a game that doesn't use ENTER itself exits to the menu
+            return False  # a game that doesn't use ENTER itself exits to the menu
 
         game.advance_turn(key)
         game.render()
         score_display.send_score(game.score, game.best_score)
 
-    game.on_round_end(key_handler)
+    return game.on_round_end(key_handler)
 
 
 def main():
@@ -95,15 +106,22 @@ def main():
     key_handler = create_key_handler(mode)
     menu = MenuGame(matrix, banner_matrix, key_handler)
 
+    active = menu
+    if args.start_game:
+        game_cls = next(g for g in GAMES if g.NAME == args.start_game)
+        active = game_cls(matrix, banner_matrix, key_handler)
+
     with create_score_display(mode) as score_display:
-        active = menu
         while True:
             init_game(active, key_handler)
-            game_loop(score_display, active, key_handler)
+            restart = game_loop(score_display, active, key_handler)
 
-            active = (
-                menu.selected_game_cls(matrix, banner_matrix, key_handler)
-                if active is menu else menu)
+            if active is menu:
+                active = menu.selected_game_cls(matrix, banner_matrix, key_handler)
+            elif not restart:
+                active = menu
+            # else: an arrow key on the game-over screen - keep playing
+            # the same game, init_game() will start() it fresh next loop.
 
 
 if __name__ == "__main__":

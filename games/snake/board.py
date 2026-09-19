@@ -8,7 +8,7 @@ from hardware.interfaces import Key
 BOARD_DIMS = (16, 16)
 
 INITIAL_LENGTH = 3
-POINTS_PER_APPLE = 10
+POINTS_PER_APPLE = 5
 
 NORMAL_TURN_INTERVAL = 0.25
 RUN_TURN_INTERVAL = 0.15  # a bit faster while the run key is held
