@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from games.base import Game
@@ -7,6 +8,7 @@ from hardware.interfaces import Key, KeyHandler, Matrix
 
 class TetrisGame(Game):
     NAME = "Tetris"
+    LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo.png")
     USED_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
 
     def __init__(
