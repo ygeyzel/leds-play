@@ -9,6 +9,24 @@ from hardware.interfaces import Key, KeyHandler
 RESTART_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
 
 
+def default_score_file(game_cls: type) -> str:
+    """Where `game_cls`'s `.best_score` lives by default: next to its own
+    module. A module-level function (not tied to a `Game` instance) so the
+    menu can look up any game's best score just from its class, to show it
+    while that game is only selected, not yet playing."""
+    module_dir = os.path.dirname(inspect.getfile(game_cls))
+    return os.path.join(module_dir, ".best_score")
+
+
+def read_best_score(score_file: str) -> int:
+    if os.path.exists(score_file):
+        with open(score_file) as file:
+            value = file.read()
+            if value.isdigit():
+                return int(value)
+    return 0
+
+
 class Game(ABC):
     """Contract every game implements, so `main.py`'s menu can run any of
     them uniformly. See GAME_TEMPLATE.md for the full per-game template
@@ -32,20 +50,8 @@ class Game(ABC):
     SFX_PATHS = {}
 
     def __init__(self, score_file: str = None):
-        self._score_file = score_file or self._default_score_file()
-        self.best_score = self._read_best_score()
-
-    def _default_score_file(self) -> str:
-        module_dir = os.path.dirname(inspect.getfile(type(self)))
-        return os.path.join(module_dir, ".best_score")
-
-    def _read_best_score(self) -> int:
-        if os.path.exists(self._score_file):
-            with open(self._score_file) as file:
-                value = file.read()
-                if value.isdigit():
-                    return int(value)
-        return 0
+        self._score_file = score_file or default_score_file(type(self))
+        self.best_score = read_best_score(self._score_file)
 
     def _update_best_score(self):
         if self.score > self.best_score:
