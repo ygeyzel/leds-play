@@ -2,8 +2,8 @@ from time import sleep
 from unittest.mock import Mock
 
 from tests.shared import matrix_test
-from game.drawer import Drawer
-from game.game_board import Block, BLOCK_SHAPES, Direction
+from games.tetris.drawer import Drawer
+from games.tetris.board import Block, BLOCK_SHAPES, Direction
 
 
 board_pos_0 = [
