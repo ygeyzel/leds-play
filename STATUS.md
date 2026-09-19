@@ -228,7 +228,13 @@ Roughly in the order they'll likely need to happen:
 1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
    and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
    game defines `BGM_PATH`/`SFX_PATHS` yet.
-2. **Expand the hardware config**: **partially done, sim side only** (see
+2. **Simulator pause/mute keys**: add `P` (pause the game loop) and `M`
+   (mute/unmute music) to `hardware/simulator/keys.py`, sim mode only.
+   Global controls, not a per-game command, so probably handled directly
+   in `main.py`'s `game_loop` (like the existing `Key.ENTER`-to-menu
+   handling) rather than via a game's `USED_KEYS`/`advance_turn`. Mute is
+   a no-op until item 1 (audio) exists.
+3. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
    - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
@@ -241,7 +247,7 @@ Roughly in the order they'll likely need to happen:
    - Neither Tetris nor Snake render anything into the banner (the menu
      does; both just leave it blank while playing) or react to the 2nd
      D-pad beyond Snake's `Key.P2_UP` run boost.
-3. **Implement More Games** ...
+4. **Implement More Games** ...
 
 ## Open questions for the user
 
