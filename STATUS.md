@@ -134,6 +134,16 @@ just a plan).
   - Verified manually in `sim` mode: menu renders (scrolling name + logo
     placeholder + arrows), ENTER launches Tetris on the shared matrix,
     ENTER mid-game returns to the menu instantly.
+- **Fixed a dropped-keypress race in both `KeyHandler` backends**: `get_key()`
+  called `flush()`, which reset `_last_key_pressed` (not just the one-shot
+  `_key_clicked`) on every call. A press seen but not yet released could
+  get wiped by an intervening `get_key()` before its release ever arrived,
+  silently dropping the click. Latent before (Tetris's slowest poll rate,
+  1s at level 1, easily outlasted a real button press) but broke reliably
+  once the menu started polling every 0.07s for smooth scrolling - found
+  via a real "ENTER doesn't start the game" report, reproduced with
+  synthetic X key events. `get_key()` now only clears `_key_clicked`;
+  `flush()` (called at round boundaries) still resets both.
 
 ## In progress
 
