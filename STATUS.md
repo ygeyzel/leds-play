@@ -204,6 +204,18 @@ just a plan).
   `Game.NAME` in `games.registry.GAMES` exactly (argparse `choices`
   validates it). Falls back to the menu once that game's round ends
   without an arrow-key restart.
+- **Menu shows the selected game's best score**: `games/base.py`'s
+  per-game best-score file helpers (`default_score_file`/
+  `read_best_score`) became module-level functions (previously private
+  `Game` methods) so they work from a game *class* alone, no instance
+  needed. `MenuGame.best_score` is now a property that looks up
+  `selected_game_cls`'s best score this way (its setter is a no-op -
+  `Game.__init__` still assigns `self.best_score` once, harmlessly);
+  `main.py`'s existing `score_display.send_score(game.score,
+  game.best_score)` call already runs every menu tick, so the display
+  updates live as LEFT/RIGHT change the selection. Verified with an
+  isolated script (switching `MenuGame._index` reads back the right
+  game's score) and a real `sim` run.
 
 ## In progress
 

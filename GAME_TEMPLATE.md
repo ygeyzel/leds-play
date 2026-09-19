@@ -130,7 +130,12 @@ filesystem auto-discovery magic.
   centered, flanked by a left/right triangle indicating the D-pad changes
   the selection. On the banner, the selected game's `NAME` scrolls
   left-to-right in the `games/menu/font.py` bitmap font, looping with a
-  gap.
+  gap. The score display (from `main.py`'s existing per-tick
+  `score_display.send_score(game.score, game.best_score)` call) shows the
+  selected game's best score: `MenuGame.best_score` is a property that
+  reads it via `games.base.default_score_file`/`read_best_score` (module
+  functions, so no game instance is needed) instead of the plain instance
+  attribute `Game.__init__` assigns for every other game.
 
 ## Restarting after game over
 
