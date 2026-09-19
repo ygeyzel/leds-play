@@ -4,6 +4,7 @@ from unittest.mock import Mock
 from tests.shared import matrix_test
 from games.tetris.drawer import Drawer
 from games.tetris.board import Block, BLOCK_SHAPES, Direction
+from hardware.rpi.leds import DualMatrix
 
 
 board_pos_0 = [
@@ -30,7 +31,7 @@ board_pos_0 = [
 ]
 
 
-drawer = Drawer("rpi")
+drawer = Drawer(DualMatrix(18, 8, 32))
 
 
 @matrix_test
