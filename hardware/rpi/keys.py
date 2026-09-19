@@ -34,8 +34,12 @@ class RpiKeyHandler(KeyHandler):
             self._last_key_pressed = key
 
     def get_key(self) -> Key:
+        # Only clears the one-shot _key_clicked, not _last_key_pressed: a
+        # press already seen but not yet released must survive across
+        # get_key() calls, or a fast poller (the menu) can wipe it before
+        # the matching release ever arrives, silently dropping the click.
         key = self._key_clicked
-        self.flush()
+        self._key_clicked = Key.NO_KEY
         return key
 
     def flush(self):
