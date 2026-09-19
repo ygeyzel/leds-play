@@ -1,6 +1,8 @@
+from typing import Optional
+
 from games.base import Game
-from games.tetris.drawer import NUM_OF_MATRICES, SIZE_OF_BANNER, Drawer
-from hardware.interfaces import Key
+from games.tetris.drawer import Drawer
+from hardware.interfaces import Key, Matrix
 
 
 class TetrisGame(Game):
@@ -8,11 +10,10 @@ class TetrisGame(Game):
     USED_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
 
     def __init__(
-        self, mode: str = "rpi",
-        num_of_matrices: int = NUM_OF_MATRICES, banner_size: int = SIZE_OF_BANNER,
+        self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
         score_file: str = None,
     ):
-        self._drawer = Drawer(mode, num_of_matrices, banner_size)
+        self._drawer = Drawer(matrix, banner_matrix)
         self._board = self._drawer.board
         self._board.burn_animation = self._drawer.burn_animation
 
