@@ -93,7 +93,7 @@ def main():
 
     matrix, banner_matrix = create_matrices(mode, args.num_of_matrices, args.size_of_banner)
     key_handler = create_key_handler(mode)
-    menu = MenuGame(matrix, banner_matrix)
+    menu = MenuGame(matrix, banner_matrix, key_handler)
 
     with create_score_display(mode) as score_display:
         active = menu
@@ -101,7 +101,9 @@ def main():
             init_game(active, key_handler)
             game_loop(score_display, active, key_handler)
 
-            active = menu.selected_game_cls(matrix, banner_matrix) if active is menu else menu
+            active = (
+                menu.selected_game_cls(matrix, banner_matrix, key_handler)
+                if active is menu else menu)
 
 
 if __name__ == "__main__":

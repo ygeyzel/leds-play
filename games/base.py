@@ -12,11 +12,14 @@ class Game(ABC):
     this belongs to.
 
     By convention (not enforced by this ABC - Python can't check
-    constructor signatures) every subclass's `__init__` accepts
-    `(matrix, banner_matrix=None, score_file=None)`: the menu creates the
-    one real `Matrix`/banner `Matrix` pair for the whole process and hands
-    them to whichever game is currently active, so hardware only gets
-    initialized once."""
+    constructor signatures) every subclass's `__init__` accepts `(matrix,
+    banner_matrix=None, key_handler=None, score_file=None)`: `main.py`
+    creates the one real `Matrix`/banner `Matrix`/`KeyHandler` for the
+    whole process and hands them to whichever game is currently active, so
+    hardware only gets initialized once. `key_handler` is only needed by a
+    game that reads continuous hold state via `KeyHandler.is_pressed()`
+    (e.g. a run/boost key) rather than just `get_key()`'s one-shot clicks;
+    most games can ignore it."""
 
     NAME: str
     LOGO_PATH: str = None  # not implemented yet, see GAME_TEMPLATE.md step 4

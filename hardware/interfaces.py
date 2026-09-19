@@ -59,6 +59,13 @@ class KeyHandler(ABC):
         (e.g. the simulator, which needs to service its GUI event loop)
         requires it."""
 
+    def is_pressed(self, key: Key) -> bool:
+        """Whether `key` is being held down right now - independent of
+        get_key()'s one-shot click-on-release reporting. For a continuous
+        modifier (e.g. a run/boost key) rather than a discrete command.
+        Default: never held, for a backend that doesn't track this."""
+        return False
+
 
 class ScoreDisplay(ABC):
     """Contract a score-display backend must satisfy."""

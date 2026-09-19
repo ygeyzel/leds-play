@@ -2,7 +2,7 @@ from typing import Optional
 
 from games.base import Game
 from games.tetris.drawer import Drawer
-from hardware.interfaces import Key, Matrix
+from hardware.interfaces import Key, KeyHandler, Matrix
 
 
 class TetrisGame(Game):
@@ -11,8 +11,10 @@ class TetrisGame(Game):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
-        score_file: str = None,
+        key_handler: Optional[KeyHandler] = None, score_file: str = None,
     ):
+        # key_handler unused - Tetris only needs get_key()'s one-shot
+        # clicks, accepted for the shared Game constructor convention.
         self._drawer = Drawer(matrix, banner_matrix)
         self._board = self._drawer.board
         self._board.burn_animation = self._drawer.burn_animation

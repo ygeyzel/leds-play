@@ -46,9 +46,11 @@ class MenuGame(Game):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
-        games: Optional[List[type]] = None, current_game_file: str = None,
-        score_file: str = None,
+        key_handler=None, games: Optional[List[type]] = None,
+        current_game_file: str = None, score_file: str = None,
     ):
+        # key_handler unused - the menu only needs get_key()'s one-shot
+        # clicks, accepted for the shared Game constructor convention.
         self._matrix = matrix
         self._banner_matrix = banner_matrix
         self._games = games if games is not None else GAMES
