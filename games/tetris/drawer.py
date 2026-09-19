@@ -1,20 +1,13 @@
 from itertools import product
 from time import sleep
+from typing import Optional
+
 from games.tetris.board import Board
 from common.common import add_positions, BOARD_DIMS
-from hardware.factory import create_banner_matrix, create_matrix
+from hardware.interfaces import Matrix
 
 
 BOARD_POS_0 = (8, 2)
-SINGLE_MATRIX_WIDTH = 8
-MATRIX_HEIGHT = 32
-MATRIX_DPIN = 18
-NUM_OF_MATRICES = 5
-
-BANNER_PANEL_WIDTH = 32
-BANNER_PANEL_HEIGHT = 8
-BANNER_DPIN = 13  # placeholder; unused until rpi banner support lands
-SIZE_OF_BANNER = 2
 
 NEXT_CELL_POS_0 = (1, 4)
 NEXT_CELL_HEIGHT_WIDTH = (7, 8)
@@ -25,16 +18,9 @@ NEXT_CELL_BORDER_COLOR_HSV = (20, 0, 0.05)
 
 
 class Drawer:
-    def __init__(
-        self, mode: str = "rpi",
-        num_of_matrices: int = NUM_OF_MATRICES, banner_size: int = SIZE_OF_BANNER,
-    ):
-        banner_dims = (BANNER_PANEL_HEIGHT, BANNER_PANEL_WIDTH * banner_size)
-        self._matrix = create_matrix(
-            mode, MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
-            banner_dims=banner_dims)
-        self._banner_matrix = create_banner_matrix(
-            mode, BANNER_DPIN, BANNER_PANEL_WIDTH, BANNER_PANEL_HEIGHT, banner_size)
+    def __init__(self, matrix: Matrix, banner_matrix: Optional[Matrix] = None):
+        self._matrix = matrix
+        self._banner_matrix = banner_matrix
 
         board = Board(BOARD_DIMS)
 

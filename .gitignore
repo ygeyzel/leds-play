@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 **/.best_score
+**/.current_game
 .env
 *.swp
 .venv/

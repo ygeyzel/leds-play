@@ -10,9 +10,9 @@ support a bigger/more flexible hardware setup (more pixels, more buttons).
 
 See `CLAUDE.md` for architecture/contributor notes, `README.md` for
 user-facing setup instructions, and `GAME_TEMPLATE.md` for the agreed
-design of the per-game contract/template (`Game` ABC and Tetris's
-migration behind it are done; the launcher/logo/audio pieces are roadmap
-item 1 below).
+design of the per-game contract/template (`Game` ABC, Tetris's migration
+behind it, the menu, and PNG logo loading are all done; audio is still
+just a plan).
 
 ## Completed
 
@@ -105,7 +105,35 @@ item 1 below).
     launcher (menu/CLI picker) is still future work, see item 1 below.
   - Not part of this migration: the logo/audio pieces of `GAME_TEMPLATE.md`
     (`LOGO_PATH` is `None` on every game for now) and the launcher UI
-    itself — both still open.
+    itself — both done in the next entry below.
+- **Game-selection menu built** (`games/menu/`, design in
+  `GAME_TEMPLATE.md`): `MenuGame` is itself a `Game`, so `main.py`'s loop
+  alternates between it and whichever real game is selected, transitioning
+  on `is_game_over()` either way:
+  - LEFT/RIGHT cycle `games.registry.GAMES` cyclically; the selection is
+    persisted (by game `NAME`) to `games/menu/.current_game` and restored
+    on startup.
+  - ENTER launches the selected game. `main.py`'s `game_loop` also treats
+    ENTER as a universal "exit to menu" key for any game that doesn't claim
+    it itself via `USED_KEYS` - Tetris doesn't, so ENTER mid-game drops
+    straight back to the menu (no game-over screen; see `Game.on_round_end`,
+    which the menu overrides to skip its own wait screen when launching).
+  - Matrix creation moved out of each game and into `main.py`
+    (`create_matrices()`, using the hardware-wiring constants formerly in
+    `games/tetris/drawer.py`) so the one real `Matrix`/banner `Matrix` pair
+    is shared between the menu and every game instead of being rebuilt
+    (and, on real hardware, re-initialized) each time. Every `Game`
+    subclass's `__init__` now takes `(matrix, banner_matrix=None,
+    score_file=None)` by convention.
+  - `games/logo.py` added: decodes a game's `logo.png` (Pillow, now a base
+    dependency) into the pixel grid the menu draws centered on the board
+    matrix, flanked by left/right arrows; falls back to a placeholder empty
+    box when a game has no logo yet (true for every game today).
+  - `games/menu/font.py` added: a small 3x5 bitmap font, used to scroll the
+    selected game's name across the banner.
+  - Verified manually in `sim` mode: menu renders (scrolling name + logo
+    placeholder + arrows), ENTER launches Tetris on the shared matrix,
+    ENTER mid-game returns to the menu instantly.
 
 ## In progress
 
@@ -115,12 +143,13 @@ Nothing active right now — see "Not started yet" for what's next.
 
 Roughly in the order they'll likely need to happen:
 
-1. **Build the game-selection launcher.** `games/registry.py`'s `GAMES`
-   list exists, but `main.py` still just runs `GAMES[0]` — need an actual
-   menu/CLI picker so more than one game is reachable, plus the
-   logo/audio pieces of `GAME_TEMPLATE.md` (PNG logo loading, the
-   `AudioPlayer` contract + sim backend) that a launcher would show/use.
-2. **Expand the hardware config**: **partially done, sim side only** (see
+1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
+   and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
+   game defines `BGM_PATH`/`SFX_PATHS` yet.
+2. **Real logo art**: every game still shows the menu's placeholder box;
+   authoring an actual `logo.png` per game (starting with Tetris) is just
+   content, no code changes needed once one exists (see `GAME_TEMPLATE.md`).
+3. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
    - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
@@ -130,10 +159,9 @@ Roughly in the order they'll likely need to happen:
    - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
      Tetris layout constants (unaffected by the bigger matrix — Tetris just
      gets extra unused columns to the right for now).
-   - Nothing renders into the banner yet — that's the next item (games
-     need to be updated to actually use the bigger board/banner/buttons).
-3. **Update the games to use the expanded hardware** — Tetris doesn't
-   render into the banner or react to the 2nd D-pad/`Key.ENTER` yet.
+   - Tetris itself still doesn't render anything into the banner (the menu
+     does; Tetris just leaves it blank while playing) or react to the 2nd
+     D-pad.
 4. **Implement Snake** as the second game, to validate the `Game`
    abstraction actually generalizes.
 5. **Implement More Games** ...

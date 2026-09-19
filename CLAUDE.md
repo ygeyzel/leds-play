@@ -27,36 +27,49 @@ description below.
   `hardware/factory.py`.
 - A game abstraction so `main.py` can run any game (Tetris, Snake, Pong, ...)
   through a common contract, rather than being hardwired to Tetris like it
-  is today: **partially done** — see `STATUS.md` and `GAME_TEMPLATE.md`; the
-  `Game` contract exists and Tetris runs behind it, but there's still no
-  game-selection launcher (`main.py` just runs the first registered game).
+  is today: **done** — see `STATUS.md` and `GAME_TEMPLATE.md`; the `Game`
+  contract exists, Tetris runs behind it, and `games/menu/` is a working
+  game-selection menu (itself a `Game`) that `main.py` runs by default.
 - Hardware is meant to grow over time (more LEDs/pixels, more buttons), so
   layout/pin/key-count details should live in config, not scattered literal
-  constants: **partially done** — the matrix/pin layout constants still live
-  in `games/tetris/drawer.py` and haven't been made configurable yet.
+  constants: **partially done** — the matrix/pin layout constants now live
+  in `main.py` (moved out of `games/tetris/drawer.py` since the matrix is
+  shared across games) but still aren't configurable beyond the existing
+  `--num-of-matrices`/`--size-of-banner` CLI flags.
 
 ## Current code
 
-- `main.py` — game loop; runs the first game in `games/registry.py`'s
-  `GAMES` list (just Tetris so far), parameterized by an `rpi`/`sim` mode
-  arg. No game-selection launcher yet.
-- `games/base.py` — the `Game` ABC every game implements
-  (`start`/`advance_turn`/`is_game_over`/`render`/`score`/`turn_interval`),
-  plus shared per-game best-score file handling. See `GAME_TEMPLATE.md` for
-  the full per-game template (name/logo/assets/audio) this is part of.
-- `games/registry.py` — explicit `GAMES` list of playable games.
+- `main.py` — owns the physical rig: creates the one board `Matrix`/banner
+  `Matrix` pair for the whole process (`create_matrices()`) and the
+  `rpi`/`sim` mode arg, then runs `games/menu/`'s `MenuGame`, switching to
+  whichever game it selects and back again on that game's ENTER/game-over.
+- `games/base.py` — the `Game` ABC every game (the menu included)
+  implements (`start`/`advance_turn`/`is_game_over`/`render`/`score`/
+  `turn_interval`/`on_round_end`), plus shared per-game best-score file
+  handling. By convention every subclass's `__init__` takes `(matrix,
+  banner_matrix=None, score_file=None)`. See `GAME_TEMPLATE.md` for the
+  full per-game template (name/logo/assets/audio) this is part of.
+- `games/registry.py` — explicit `GAMES` list of games selectable from the
+  menu (Tetris only, so far).
+- `games/menu/__init__.py` — `MenuGame(Game)`: the game-selection screen
+  (LEFT/RIGHT cycles `GAMES`, ENTER launches); persists the selection to
+  `games/menu/.current_game`.
+- `games/menu/font.py` — a tiny 3x5 bitmap font used to scroll the selected
+  game's name across the banner.
+- `games/logo.py` — `load_logo()`: the only place that imports `Pillow`;
+  decodes a game's `logo.png` into the pixel grid the menu draws.
 - `games/tetris/board.py` — Tetris rules/state (`Board`, `Block`); imports
   the shared `Key` enum from `hardware/interfaces.py`.
-- `games/tetris/drawer.py` — draws the Tetris board onto a `Matrix`; Tetris-
-  and hardware-specific layout constants live here (`BOARD_POS_0`,
-  `MATRIX_DPIN`, etc.). Builds its matrix via
-  `hardware.factory.create_matrix(mode, ...)`.
+- `games/tetris/drawer.py` — draws the Tetris board onto a `Matrix` given
+  to it (doesn't create one itself); Tetris-specific layout constants live
+  here (`BOARD_POS_0`, etc.).
 - `games/tetris/__init__.py` — `TetrisGame(Game)`, gluing `board.py` and
   `drawer.py` together behind the `Game` contract.
 - `hardware/interfaces.py` — hardware-agnostic contracts: `Matrix`,
   `KeyHandler`, `ScoreDisplay` (ABCs) and the shared `Key` enum.
 - `hardware/canvas.py` — `Canvas`: hardware-agnostic drawing surface used by
-  `games/tetris/drawer.py`, works against any `Matrix` implementation.
+  both `games/tetris/drawer.py` and `games/menu/`, works against any
+  `Matrix` implementation.
 - `hardware/factory.py` — `create_matrix`/`create_key_handler`/
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
@@ -84,9 +97,9 @@ description below.
   clean run of these as CI-style verification, and don't try to run them
   without a Pi.
 
-The game-selection launcher (multi-game `main.py`) hasn't been built yet —
-don't deepen the single-game (`GAMES[0]`) coupling in `main.py` unless
-that's specifically the task at hand.
+Real Pi audio hardware and per-game audio assets haven't been built yet
+(see `GAME_TEMPLATE.md`'s "Still open" section) — don't assume
+`AudioPlayer` or `BGM_PATH`/`SFX_PATHS` do anything yet.
 
 ## Conventions
 

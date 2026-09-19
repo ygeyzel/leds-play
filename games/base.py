@@ -1,14 +1,22 @@
 import inspect
 import os
 from abc import ABC, abstractmethod
+from time import sleep, time
 
-from hardware.interfaces import Key
+from hardware.interfaces import Key, KeyHandler
 
 
 class Game(ABC):
-    """Contract every game implements, so `main.py` (eventually a
-    game-selection launcher, see STATUS.md) can run any of them uniformly.
-    See GAME_TEMPLATE.md for the full per-game template this belongs to."""
+    """Contract every game implements, so `main.py`'s menu can run any of
+    them uniformly. See GAME_TEMPLATE.md for the full per-game template
+    this belongs to.
+
+    By convention (not enforced by this ABC - Python can't check
+    constructor signatures) every subclass's `__init__` accepts
+    `(matrix, banner_matrix=None, score_file=None)`: the menu creates the
+    one real `Matrix`/banner `Matrix` pair for the whole process and hands
+    them to whichever game is currently active, so hardware only gets
+    initialized once."""
 
     NAME: str
     LOGO_PATH: str = None  # not implemented yet, see GAME_TEMPLATE.md step 4
@@ -70,3 +78,16 @@ class Game(ABC):
         """Called repeatedly while waiting after game over (e.g. to run a
         blink animation). Defaults to a plain re-render."""
         self.render()
+
+    def on_round_end(self, key_handler: KeyHandler):
+        """Called once a round ends naturally (`is_game_over()` became
+        true). Default: wait on a blinking screen (via `on_game_over_tick`)
+        for a keypress, with a minimum pause, before control returns to the
+        menu. The menu itself overrides this to return immediately - it has
+        no "game over" of its own to show off."""
+        key_handler.flush()
+        end_time = time()
+
+        while key_handler.get_key() == Key.NO_KEY or time() - end_time < 2:
+            self.on_game_over_tick()
+            sleep(0.2)
