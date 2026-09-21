@@ -10,6 +10,9 @@ from hardware.interfaces import Key, Matrix
 
 
 LOGO_SIZE = (10, 10)
+SMALL_LOGO_SIZE = (4, 4)
+PREVIEW_ROW_GAP = 3  # rows between the small-logo preview strip and the big logo
+PREVIEW_SIDE_GAP = 2  # columns between a small preview logo and the big logo
 ARROW_SIZE = (5, 4)
 ARROW_GAP = 3  # columns between an arrow and the logo box
 
@@ -55,8 +58,10 @@ class MenuGame(Game):
         self._banner_matrix = banner_matrix
         self._games = games if games is not None else GAMES
 
-        self._logo_canvas, self._left_arrow_canvas, self._right_arrow_canvas = \
-            self._create_matrix_canvases(matrix)
+        (
+            self._logo_canvas, self._left_arrow_canvas, self._right_arrow_canvas,
+            self._prev_logo_canvas, self._next_logo_canvas,
+        ) = self._create_matrix_canvases(matrix)
         self._banner_canvas = (
             banner_matrix.create_canvas((0, 0), banner_matrix.dimensions)
             if banner_matrix else None)
@@ -87,7 +92,21 @@ class MenuGame(Game):
             (arrow_row0, min(cols - arrow_cols, logo_pos0[1] + logo_cols + ARROW_GAP)),
             ARROW_SIZE)
 
-        return logo_canvas, left_arrow_canvas, right_arrow_canvas
+        # A small preview of the previous/next game in the list, in a row
+        # above the big logo - flip through with LEFT/RIGHT same as the
+        # big one.
+        small_rows, small_cols = SMALL_LOGO_SIZE
+        preview_row0 = max(0, logo_pos0[0] - PREVIEW_ROW_GAP - small_rows)
+        prev_logo_canvas = matrix.create_canvas(
+            (preview_row0, max(0, logo_pos0[1] - PREVIEW_SIDE_GAP - small_cols)),
+            SMALL_LOGO_SIZE)
+        next_logo_canvas = matrix.create_canvas(
+            (preview_row0, min(cols - small_cols, logo_pos0[1] + logo_cols + PREVIEW_SIDE_GAP)),
+            SMALL_LOGO_SIZE)
+
+        return (
+            logo_canvas, left_arrow_canvas, right_arrow_canvas,
+            prev_logo_canvas, next_logo_canvas)
 
     def _default_current_game_file(self) -> str:
         module_dir = os.path.dirname(inspect.getfile(type(self)))
@@ -164,6 +183,7 @@ class MenuGame(Game):
     def render(self):
         self._matrix.clear()
         self._draw_logo()
+        self._draw_preview_logos()
         self._draw_arrow(self._left_arrow_canvas, LEFT_ARROW_SHAPE, self._left_blink_ticks)
         self._draw_arrow(self._right_arrow_canvas, RIGHT_ARROW_SHAPE, self._right_blink_ticks)
         self._matrix.show()
@@ -179,16 +199,28 @@ class MenuGame(Game):
             canvas.draw_shape(shape, ARROW_COLOR_HSV)
         # else: skip drawing - the arrow blanks out once, same color as always
 
-    def _draw_logo(self):
-        game_cls = self.selected_game_cls
-        if game_cls not in self._logo_cache:
-            self._logo_cache[game_cls] = load_logo(game_cls.LOGO_PATH, LOGO_SIZE)
-        logo = self._logo_cache[game_cls]
+    def _load_cached_logo(self, game_cls: type, size):
+        key = (game_cls, size)
+        if key not in self._logo_cache:
+            self._logo_cache[key] = load_logo(game_cls.LOGO_PATH, size)
+        return self._logo_cache[key]
 
+    def _draw_logo(self):
+        self._draw_logo_into(self._logo_canvas, self.selected_game_cls, LOGO_SIZE)
+
+    def _draw_preview_logos(self):
+        count = len(self._games)
+        prev_cls = self._games[(self._index - 1) % count]
+        next_cls = self._games[(self._index + 1) % count]
+        self._draw_logo_into(self._prev_logo_canvas, prev_cls, SMALL_LOGO_SIZE)
+        self._draw_logo_into(self._next_logo_canvas, next_cls, SMALL_LOGO_SIZE)
+
+    def _draw_logo_into(self, canvas, game_cls: type, size):
+        logo = self._load_cached_logo(game_cls, size)
         if logo:
-            self._logo_canvas.draw_color_map(logo)
+            canvas.draw_color_map(logo)
         else:
-            self._logo_canvas.draw_borders(LOGO_PLACEHOLDER_COLOR_HSV)
+            canvas.draw_borders(LOGO_PLACEHOLDER_COLOR_HSV)
 
     def _draw_banner_text(self):
         banner_rows, banner_cols = self._banner_matrix.dimensions
