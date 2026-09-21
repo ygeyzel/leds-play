@@ -272,6 +272,43 @@ just a plan).
     font editor (lowercase slots appear, editing/saving round-trips
     correctly, blank untouched slots aren't written).
 
+- **Pause/mute toggle buttons + active-button dimming in `sim`**:
+  - `hardware/interfaces.py`'s `Key` enum gained `PAUSE` and `MUTE`;
+    `KeyHandler` gained `is_toggled(key)` (a persistent on/off state
+    flipped by each completed click, independent of `get_key()`'s one-shot
+    reporting and `is_pressed()`'s momentary hold) and `set_active_keys(keys)`
+    (tells the backend which keys the current game/menu actually reads).
+    Both default to no-op/never-toggled for a backend that doesn't support
+    them yet (`hardware/rpi/keys.py` is unaffected).
+  - `hardware/simulator/keys.py`: P/M on-screen buttons next to Enter, in a
+    neutral blue-gray instead of the D-pad's red, lit brighter while
+    toggled on. Every D-pad/Enter button the active game doesn't list in
+    its `USED_KEYS` now dims to gray instead of red (an idea that started
+    as a lit ring around active buttons, then was simplified to this
+    gray-vs-red fill). `main.py::init_game` always includes `Key.ENTER` in
+    the active set even for a game whose own `USED_KEYS` doesn't list it,
+    since ENTER always does something (exit to menu).
+  - `main.py::_sleep` (used for every turn's wait, and reused as-is for the
+    pause case) pushes its deadline forward instead of counting down while
+    `Key.PAUSE` is toggled on - the turn clock halts, but keys (PAUSE
+    itself included, to unpause) keep being read every pump.
+  - Found and fixed a real bug along the way: a held key delivers
+    release+press pairs from X11 auto-repeat, and the original toggle
+    logic treated every release as a completed click, so one physical
+    press of P/M could flip the toggle 0 or 2 times instead of once (only
+    visible on a toggle - a duplicate one-shot click is harmless, which is
+    why the same binding pattern never caused trouble for the D-pad).
+    Fixed with the standard Tk idiom: defer a release by one tick and
+    cancel it if a matching press arrives immediately after.
+  - Verified in `sim` mode via screenshots: single click reliably toggles
+    P on then off (no double-fire), the board visibly freezes while paused
+    and resumes exactly where it left off on unpause, and Enter/D-pad
+    dim to gray correctly per-game.
+  - Also generated `games/tetris/logo_small.png` and
+    `games/snake/logo_small.png` (hand-tunable small-logo overrides that
+    `tools/logo_editor.py` already knew how to read/write; the app falls
+    back to decoding `logo.png` smaller when this file doesn't exist).
+
 ## In progress
 
 Nothing active right now — see "Not started yet" for what's next.

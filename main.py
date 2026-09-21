@@ -60,6 +60,9 @@ def create_matrices(mode: str, num_of_matrices: int, banner_size: int):
 def init_game(game: Game, key_handler: KeyHandler):
     game.start()
     key_handler.flush()
+    # ENTER always does something (exit to menu, or - for the menu itself -
+    # launch), even for a game that doesn't list it in its own USED_KEYS.
+    key_handler.set_active_keys(game.USED_KEYS | {Key.ENTER})
 
 
 PUMP_INTERVAL = 0.02
@@ -68,12 +71,19 @@ PUMP_INTERVAL = 0.02
 def _sleep(seconds: float, key_handler: KeyHandler):
     """Sleep in small slices, pumping the key handler between them so a
     backend that needs to service a GUI event loop (the simulator) stays
-    responsive instead of freezing for the whole turn."""
+    responsive instead of freezing for the whole turn. While Key.PAUSE is
+    toggled on, the deadline is pushed forward instead of counting down -
+    the turn clock halts, but keys (including PAUSE itself, to unpause)
+    keep being read every pump."""
 
     deadline = time() + seconds
     while (remaining := deadline - time()) > 0:
         key_handler.pump()
-        sleep(min(PUMP_INTERVAL, remaining))
+        if key_handler.is_toggled(Key.PAUSE):
+            deadline += PUMP_INTERVAL
+            sleep(PUMP_INTERVAL)
+        else:
+            sleep(min(PUMP_INTERVAL, remaining))
 
 
 def game_loop(score_display, game: Game, key_handler: KeyHandler) -> bool:
