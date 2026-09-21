@@ -34,5 +34,5 @@ def hsv_to_rgb(hsv: HsvColor) -> RgbColor:
         (c, 0, x)
     )
 
-    rgb0 = rgb0_by_h0[int(h0) - 1]
+    rgb0 = rgb0_by_h0[int(h0) % 6]
     return tuple(int((color + m) * 255) for color in rgb0)
