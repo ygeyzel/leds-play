@@ -9,7 +9,11 @@ from games.registry import GAMES
 from hardware.interfaces import Key, Matrix
 
 
-LOGO_SIZE = (10, 10)
+LOGO_SIZE = (12, 12)
+SMALL_LOGO_SIZE = (6, 6)
+PREVIEW_COUNT = 2  # small logos above each arrow, innermost aligned with it
+PREVIEW_LOGO_GAP = 1  # columns between adjacent small logos
+PREVIEW_ROW_GAP = 2  # rows between the preview strip and the arrow below it
 ARROW_SIZE = (5, 4)
 ARROW_GAP = 3  # columns between an arrow and the logo box
 
@@ -17,7 +21,8 @@ ARROW_COLOR_HSV = (0, 0, 0.3)
 LOGO_PLACEHOLDER_COLOR_HSV = (0, 0, 0.15)  # dim empty box until a game has a real logo.png
 TEXT_COLOR_HSV = (200, 0.7, 0.3)
 
-TEXT_GAP = 8  # blank banner columns between repeats of the scrolling name
+BANNER_LOGO_PADDING = 3  # blank columns on each side of the small logo separator
+TEXT_GAP = SMALL_LOGO_SIZE[0] + 2 * BANNER_LOGO_PADDING  # gap between name repeats, sized to fit it
 TICK_INTERVAL = 0.07  # seconds per menu animation tick (~14fps scroll)
 ARROW_BLINK_TICKS = 3  # ~0.2s the clicked arrow blanks out once, same color otherwise
 
@@ -55,8 +60,10 @@ class MenuGame(Game):
         self._banner_matrix = banner_matrix
         self._games = games if games is not None else GAMES
 
-        self._logo_canvas, self._left_arrow_canvas, self._right_arrow_canvas = \
-            self._create_matrix_canvases(matrix)
+        (
+            self._logo_canvas, self._left_arrow_canvas, self._right_arrow_canvas,
+            self._prev_logo_canvases, self._next_logo_canvases,
+        ) = self._create_matrix_canvases(matrix)
         self._banner_canvas = (
             banner_matrix.create_canvas((0, 0), banner_matrix.dimensions)
             if banner_matrix else None)
@@ -81,13 +88,42 @@ class MenuGame(Game):
 
         arrow_rows, arrow_cols = ARROW_SIZE
         arrow_row0 = max(0, (rows - arrow_rows) // 2)
-        left_arrow_canvas = matrix.create_canvas(
-            (arrow_row0, max(0, logo_pos0[1] - ARROW_GAP - arrow_cols)), ARROW_SIZE)
-        right_arrow_canvas = matrix.create_canvas(
-            (arrow_row0, min(cols - arrow_cols, logo_pos0[1] + logo_cols + ARROW_GAP)),
-            ARROW_SIZE)
+        left_arrow_col = max(0, logo_pos0[1] - ARROW_GAP - arrow_cols)
+        right_arrow_col = min(cols - arrow_cols, logo_pos0[1] + logo_cols + ARROW_GAP)
+        left_arrow_canvas = matrix.create_canvas((arrow_row0, left_arrow_col), ARROW_SIZE)
+        right_arrow_canvas = matrix.create_canvas((arrow_row0, right_arrow_col), ARROW_SIZE)
 
-        return logo_canvas, left_arrow_canvas, right_arrow_canvas
+        # PREVIEW_COUNT small logos in a row above each arrow - previous
+        # games above the left arrow, next games above the right one.
+        # Index 0 (nearest the big logo) is flush with its arrow's *outer*
+        # edge - left edge for the left side, right edge for the right -
+        # so it doesn't overhang past the arrow on the side that matters,
+        # then the rest extend further outward from there. The two sides
+        # are mirror images of each other (this matters once
+        # SMALL_LOGO_SIZE differs from ARROW_SIZE's width - same anchoring
+        # on both sides would overhang on one side and starve the other).
+        small_rows, small_cols = SMALL_LOGO_SIZE
+        small_row0 = max(0, arrow_row0 - PREVIEW_ROW_GAP - small_rows)
+        right_arrow_right_edge = right_arrow_col + arrow_cols
+
+        prev_logo_canvases = [
+            matrix.create_canvas(
+                (small_row0, max(0, left_arrow_col - i * (PREVIEW_LOGO_GAP + small_cols))),
+                SMALL_LOGO_SIZE)
+            for i in range(PREVIEW_COUNT)
+        ]
+        next_logo_canvases = [
+            matrix.create_canvas(
+                (small_row0, min(
+                    cols - small_cols,
+                    right_arrow_right_edge - small_cols + i * (PREVIEW_LOGO_GAP + small_cols))),
+                SMALL_LOGO_SIZE)
+            for i in range(PREVIEW_COUNT)
+        ]
+
+        return (
+            logo_canvas, left_arrow_canvas, right_arrow_canvas,
+            prev_logo_canvases, next_logo_canvases)
 
     def _default_current_game_file(self) -> str:
         module_dir = os.path.dirname(inspect.getfile(type(self)))
@@ -164,6 +200,7 @@ class MenuGame(Game):
     def render(self):
         self._matrix.clear()
         self._draw_logo()
+        self._draw_preview_logos()
         self._draw_arrow(self._left_arrow_canvas, LEFT_ARROW_SHAPE, self._left_blink_ticks)
         self._draw_arrow(self._right_arrow_canvas, RIGHT_ARROW_SHAPE, self._right_blink_ticks)
         self._matrix.show()
@@ -179,29 +216,57 @@ class MenuGame(Game):
             canvas.draw_shape(shape, ARROW_COLOR_HSV)
         # else: skip drawing - the arrow blanks out once, same color as always
 
-    def _draw_logo(self):
-        game_cls = self.selected_game_cls
-        if game_cls not in self._logo_cache:
-            self._logo_cache[game_cls] = load_logo(game_cls.LOGO_PATH, LOGO_SIZE)
-        logo = self._logo_cache[game_cls]
+    def _load_cached_logo(self, game_cls: type, size):
+        key = (game_cls, size)
+        if key not in self._logo_cache:
+            self._logo_cache[key] = load_logo(game_cls.LOGO_PATH, size)
+        return self._logo_cache[key]
 
+    def _draw_logo(self):
+        self._draw_logo_into(self._logo_canvas, self.selected_game_cls, LOGO_SIZE)
+
+    def _draw_preview_logos(self):
+        count = len(self._games)
+        for i, canvas in enumerate(self._prev_logo_canvases):
+            game_cls = self._games[(self._index - (i + 1)) % count]
+            self._draw_logo_into(canvas, game_cls, SMALL_LOGO_SIZE)
+        for i, canvas in enumerate(self._next_logo_canvases):
+            game_cls = self._games[(self._index + (i + 1)) % count]
+            self._draw_logo_into(canvas, game_cls, SMALL_LOGO_SIZE)
+
+    def _draw_logo_into(self, canvas, game_cls: type, size):
+        logo = self._load_cached_logo(game_cls, size)
         if logo:
-            self._logo_canvas.draw_color_map(logo)
+            canvas.draw_color_map(logo)
         else:
-            self._logo_canvas.draw_borders(LOGO_PLACEHOLDER_COLOR_HSV)
+            canvas.draw_borders(LOGO_PLACEHOLDER_COLOR_HSV)
 
     def _draw_banner_text(self):
+        """Scrolls the selected game's name across the banner, with a
+        small copy of its own logo as the separator between repeats
+        (instead of a blank gap)."""
         banner_rows, banner_cols = self._banner_matrix.dimensions
         total_width = self._text_width + TEXT_GAP
 
-        color_map = []
-        for row in self._text_shape:
-            visible_row = []
-            for col in range(banner_cols):
-                source_col = (col - self._scroll_x) % total_width
-                lit = source_col < self._text_width and row[source_col]
-                visible_row.append(TEXT_COLOR_HSV if lit else None)
-            color_map.append(visible_row)
+        small_cols, small_rows = SMALL_LOGO_SIZE
+        logo = self._load_cached_logo(self.selected_game_cls, SMALL_LOGO_SIZE)
+        text_row0 = max(0, (banner_rows - FONT_HEIGHT) // 2)
+        logo_row0 = max(0, (banner_rows - small_rows) // 2)
 
-        row_offset = max(0, (banner_rows - FONT_HEIGHT) // 2)
-        self._banner_canvas.draw_color_map(color_map, (row_offset, 0))
+        color_map = [[None] * banner_cols for _ in range(banner_rows)]
+        for col in range(banner_cols):
+            source_col = (col - self._scroll_x) % total_width
+
+            if source_col < self._text_width:
+                for font_row, pixels in enumerate(self._text_shape):
+                    if pixels[source_col]:
+                        color_map[text_row0 + font_row][col] = TEXT_COLOR_HSV
+            elif logo:
+                logo_col = source_col - self._text_width - BANNER_LOGO_PADDING
+                if 0 <= logo_col < small_cols:
+                    for logo_row in range(small_rows):
+                        pixel = logo[logo_row][logo_col]
+                        if pixel:
+                            color_map[logo_row0 + logo_row][col] = pixel
+
+        self._banner_canvas.draw_color_map(color_map)
