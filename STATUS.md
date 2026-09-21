@@ -318,6 +318,16 @@ just a plan).
   `tools/font_editor.py` and for whenever mixed-case rendering is wanted.
   Verified via the font editor: all 26 slots render distinct non-blank
   shapes.
+- **Wired up hand-tuned `logo_small.png`**: `tools/logo_editor.py` could
+  already save one (painting the small canvas directly turns off
+  "auto-generate from big logo" and saves the result alongside `logo.png`),
+  but `MenuGame` never looked for it - it always resized `logo.png` down,
+  silently ignoring any `logo_small.png` on disk. `MenuGame.
+  _load_logo_for_size` now prefers `logo_small.png` next to `LOGO_PATH`
+  when requesting `SMALL_LOGO_SIZE`, falling back to the resize when that
+  file doesn't exist. Verified in `sim`: saved a deliberately distinct test
+  `logo_small.png` for Tetris and confirmed the menu's preview strip shows
+  it (not an auto-shrunk `logo.png`) while Snake is selected.
 
 ## In progress
 

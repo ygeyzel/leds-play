@@ -344,8 +344,8 @@ class LogoEditor:
     def _save_to_dir(self, directory):
         """Always writes logo.png; also writes logo_small.png alongside
         it when the small logo has been hand-edited (auto-generate off) -
-        the app itself doesn't read logo_small.png yet, but it's there for
-        when it does."""
+        MenuGame prefers that file over an auto-shrunk logo.png whenever
+        it exists."""
         os.makedirs(directory, exist_ok=True)
         big_path = os.path.join(directory, "logo.png")
         grid_to_image(self.grid, self.cols, self.rows).save(big_path)

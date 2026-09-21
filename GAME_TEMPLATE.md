@@ -168,9 +168,10 @@ default) keeps the small grid a nearest-neighbor downsample of the big one
 - the same thing `load_logo` does at runtime from `logo.png` alone, so
 this is what most games should ship. Painting the small canvas directly
 turns that off and saves the result as a separate `logo_small.png`
-alongside `logo.png` (the app itself doesn't read `logo_small.png` yet -
-it's there for when/if a game wants a hand-tuned small logo instead of an
-auto-shrunk one). Save targets: an existing `games.registry.GAMES` entry,
+alongside `logo.png` - `MenuGame._load_logo_for_size` prefers that file
+over an auto-shrunk `logo.png` when it exists, for a game that wants a
+hand-tuned small logo instead. Save targets: an existing
+`games.registry.GAMES` entry,
 a typed new game name (creates `games/<name>/` even though it isn't a
 real registered game yet), or a plain file-save dialog.
 

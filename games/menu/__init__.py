@@ -219,8 +219,22 @@ class MenuGame(Game):
     def _load_cached_logo(self, game_cls: type, size):
         key = (game_cls, size)
         if key not in self._logo_cache:
-            self._logo_cache[key] = load_logo(game_cls.LOGO_PATH, size)
+            self._logo_cache[key] = self._load_logo_for_size(game_cls, size)
         return self._logo_cache[key]
+
+    @staticmethod
+    def _load_logo_for_size(game_cls: type, size):
+        """At SMALL_LOGO_SIZE, prefer a hand-tuned logo_small.png next to
+        LOGO_PATH (written by tools/logo_editor.py once its small canvas is
+        edited directly) over resizing the big logo.png down - falling
+        back to that resize when no such file exists, same as always."""
+        path = game_cls.LOGO_PATH
+        if size == SMALL_LOGO_SIZE and path:
+            small_path = os.path.join(os.path.dirname(path), "logo_small.png")
+            small_logo = load_logo(small_path, size)
+            if small_logo is not None:
+                return small_logo
+        return load_logo(path, size)
 
     def _draw_logo(self):
         self._draw_logo_into(self._logo_canvas, self.selected_game_cls, LOGO_SIZE)
