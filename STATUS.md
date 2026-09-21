@@ -328,6 +328,20 @@ just a plan).
   file doesn't exist. Verified in `sim`: saved a deliberately distinct test
   `logo_small.png` for Tetris and confirmed the menu's preview strip shows
   it (not an auto-shrunk `logo.png`) while Snake is selected.
+- **Layout-independent WASD/Pause/Mute keysyms in `sim`**: this dev
+  machine's dual `us,il` keyboard layout means the physical P/M/W/A/S/D
+  keys produce different X keysyms (`hebrew_pe`, `hebrew_zade`,
+  `apostrophe`, `hebrew_shin`, `hebrew_dalet`, `hebrew_gimel`) when the
+  Hebrew group is active, which `hardware/simulator/keys.py`'s
+  `_KEYSYM_TO_KEY` didn't recognize - a press while that group happened to
+  be active was silently dropped (not bound to anything), which could look
+  like Pause working unreliably. Traced this down while investigating a
+  "pause doesn't fully stop the banner, just slows it" report - the pause
+  mechanism itself was verified correct (a clean toggle freezes the
+  banner's scroll position bit-for-bit, confirmed via screenshots 2s
+  apart); `_KEYSYM_TO_KEY` now also maps each of those alternate-group
+  keysyms to the same `Key`, so the toggle can't be silently missed
+  depending on which keyboard group happens to be active.
 
 ## In progress
 
