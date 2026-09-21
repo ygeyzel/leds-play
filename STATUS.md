@@ -308,6 +308,16 @@ just a plan).
     `games/snake/logo_small.png` (hand-tunable small-logo overrides that
     `tools/logo_editor.py` already knew how to read/write; the app falls
     back to decoding `logo.png` smaller when this file doesn't exist).
+- **Lowercase glyphs added to the banner font**: `games/menu/font.py`'s
+  `_GLYPHS` now has real a-z shapes (previously only `tools/font_editor.py`
+  showed blank editable slots for them) - baseline at row 5, ascenders
+  (b/d/f/h/k/l/t) reaching up to row 0 like the capitals, descenders
+  (g/j/p/q/y) reaching down to row 7. Not wired up to anything yet: every
+  caller (`games/menu/__init__.py`'s banner text) still uppercases its
+  string before rendering, so this is font *data* only, available for
+  `tools/font_editor.py` and for whenever mixed-case rendering is wanted.
+  Verified via the font editor: all 26 slots render distinct non-blank
+  shapes.
 
 ## In progress
 
