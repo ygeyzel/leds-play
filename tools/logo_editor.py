@@ -6,9 +6,10 @@ or a full color-picker dialog, and save straight into a game's own
 directory - including one that doesn't exist as a real game yet.
 
 The small logo can either auto-follow the big one (nearest-neighbor
-resized, same as the real menu does at runtime from logo.png alone) or be
-hand-edited independently, in which case it's saved alongside as its own
-logo_small.png.
+resized, same as the real menu falls back to at runtime when there's no
+logo_small.png) or be hand-edited independently. Either way, whether
+logo.png and/or logo_small.png actually get written on save is controlled
+by their own checkboxes (both on by default).
 
 Run with: python3 tools/logo_editor.py
 """
@@ -154,8 +155,7 @@ class LogoEditor:
             side="left", padx=(6, 0))
         tk.Label(
             small_frame, fg="#666", justify="left",
-            text="Paint the small logo directly to turn auto-generate off;\n"
-                 "it's then saved as its own logo_small.png.",
+            text="Paint the small logo directly to turn auto-generate off.",
         ).pack(pady=(4, 0), anchor="w")
 
         palette_frame = tk.Frame(main, pady=10)
@@ -179,6 +179,16 @@ class LogoEditor:
         tk.Button(actions, text="Clear", command=self._clear).pack(side="left", padx=4)
         tk.Button(actions, text="Open...", command=self._open_dialog).pack(side="left", padx=4)
         tk.Button(actions, text="Save As...", command=self._save_as_dialog).pack(side="left", padx=4)
+
+        self.save_large = tk.BooleanVar(value=True)
+        self.save_small = tk.BooleanVar(value=True)
+        save_targets = tk.Frame(main)
+        save_targets.pack(pady=(0, 4))
+        tk.Label(save_targets, text="Save to a game directory:").pack(side="left")
+        tk.Checkbutton(save_targets, text="Large logo", variable=self.save_large).pack(
+            side="left", padx=(6, 0))
+        tk.Checkbutton(save_targets, text="Small logo", variable=self.save_small).pack(
+            side="left", padx=(6, 0))
 
         save_frame = tk.Frame(main, pady=6)
         save_frame.pack()
@@ -342,21 +352,27 @@ class LogoEditor:
         grid_to_image(self.grid, self.cols, self.rows).save(path)
 
     def _save_to_dir(self, directory):
-        """Always writes logo.png; also writes logo_small.png alongside
-        it when the small logo has been hand-edited (auto-generate off) -
-        MenuGame prefers that file over an auto-shrunk logo.png whenever
-        it exists."""
+        """Writes logo.png and/or logo_small.png alongside it, whichever
+        of the Large logo/Small logo checkboxes above are on (both by
+        default) - MenuGame prefers logo_small.png over an auto-shrunk
+        logo.png whenever it exists."""
         os.makedirs(directory, exist_ok=True)
-        big_path = os.path.join(directory, "logo.png")
-        grid_to_image(self.grid, self.cols, self.rows).save(big_path)
+        saved = []
 
-        if self.auto_small.get():
-            self.status_label.config(text=f"Saved {big_path}")
-            return
+        if self.save_large.get():
+            big_path = os.path.join(directory, "logo.png")
+            grid_to_image(self.grid, self.cols, self.rows).save(big_path)
+            saved.append(big_path)
 
-        small_path = os.path.join(directory, "logo_small.png")
-        grid_to_image(self.small_grid, self.small_cols, self.small_rows).save(small_path)
-        self.status_label.config(text=f"Saved {big_path} and {small_path}")
+        if self.save_small.get():
+            small_path = os.path.join(directory, "logo_small.png")
+            grid_to_image(self.small_grid, self.small_cols, self.small_rows).save(small_path)
+            saved.append(small_path)
+
+        if saved:
+            self.status_label.config(text=f"Saved {' and '.join(saved)}")
+        else:
+            self.status_label.config(text="Nothing saved - check Large logo/Small logo above")
 
     def _save_to_selected_game(self):
         name = self.game_var.get()
