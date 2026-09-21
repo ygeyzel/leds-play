@@ -122,3 +122,6 @@ Real Pi audio hardware and per-game audio assets haven't been built yet
 
 - Update `STATUS.md` when completing or starting a phase of the migration
   described there, so the next session picks up context correctly.
+- Before committing any Python changes, run `ruff check` on them. If
+  `ruff` isn't installed/on `PATH`, ask the user to install it rather than
+  installing it yourself or skipping the check.
