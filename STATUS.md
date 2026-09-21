@@ -216,6 +216,61 @@ just a plan).
   updates live as LEFT/RIGHT change the selection. Verified with an
   isolated script (switching `MenuGame._index` reads back the right
   game's score) and a real `sim` run.
+- **Simpler logos + a small-logo preview strip in the menu** (design in
+  `GAME_TEMPLATE.md`):
+  - `games/tetris/logo.png` is now just four flat colored squares (cyan/
+    yellow/purple/orange), and `games/snake/logo.png` a plain blocky green
+    "S" - replacing the more detailed T-tetromino/coiled-snake art.
+  - **Found and fixed a real bug while making the Tetris logo**:
+    `common.common.hsv_to_rgb`'s hue-sector lookup was `rgb0_by_h0[int(h0)
+    - 1]` instead of `int(h0) % 6` - at `h0` (`hue/60`) in `[0, 1)`, `int(h0)
+    - 1` is `-1`, which Python happily reads as the *last* tuple element
+    instead of raising, so every hue silently got the wrong RGB formula
+    except ones sitting exactly on a 60-degree boundary (pure red, green,
+    etc. - which is why nothing looked obviously broken before: every
+    color already in use happened to be a boundary hue). Fixed and
+    reverified all the primary/secondary hues come out correct now.
+  - The menu shows a row of small logos above each arrow (previous games
+    above the left one, next games above the right, closest one
+    column-aligned with its arrow) - the same `logo.png`, just decoded
+    smaller, updating as LEFT/RIGHT cycle the selection.
+    `MenuGame._logo_cache` is keyed by `(game_cls, size)` since the big
+    and small logos are separate decodes of the same file. Went through a
+    couple of layout iterations before landing here (beside the big logo,
+    then above it) - above the arrows is what stuck.
+  - The banner's scrolling name now uses a small copy of the selected
+    game's logo as the separator between repeats, instead of a blank gap.
+  - `tools/logo_editor.py` - a standalone tkinter tool for painting
+    `logo.png` (and, if hand-tuned separately from the big one, a
+    `logo_small.png`) instead of scripting it: preset palette + full color
+    picker, save to an existing game, a typed new game name, or any path.
+  - Verified in `sim` mode across the iterations, plus a manual pass on
+    the logo editor's paint/preview/save.
+- **Bigger menu art + a real 8-row banner font + a font editor**:
+  - `games/menu/font.py`'s bitmap font grew from 3x5 to 5x8 - genuinely
+    redesigned per-glyph (not just a blank row tacked onto the old 7-row
+    shapes, which was tried first and correctly called out as pointless
+    padding for a single scrolling line).
+  - `LOGO_SIZE` 10x10 -> 12x12, `SMALL_LOGO_SIZE` 4x4 -> 6x6. Since
+    `SMALL_LOGO_SIZE` is now wider than `ARROW_SIZE`, the preview-strip
+    placement in `MenuGame._create_matrix_canvases` needed a real fix, not
+    just bigger numbers: anchoring the innermost small logo's *left* edge
+    to the arrow's position on both sides (the old formula) overhangs
+    rightward on both sides, which starves the right side's outer margin;
+    the right side now anchors to the arrow's *right* edge instead, a true
+    mirror of the left side.
+  - `tools/font_editor.py` added: shows every glyph at once (sim-style lit/
+    unlit cells), click to edit pixel-by-pixel, "Save to font.py" rewrites
+    just the `_GLYPHS` dict via a regex match on that block. Also shows
+    blank a-z slots alongside the real A-Z/0-9/space entries (the app
+    itself only ever looks up uppercase) in case lowercase is wanted later;
+    saving only keeps a blank glyph if it was already in the file or
+    genuinely edited this session, so browsing the tool and saving doesn't
+    flood the file with 26 empty lowercase entries.
+  - Verified: a `sim` run (banner text fills the full 8-row height, no
+    logo/arrow overlap at default matrix width) and a manual pass on the
+    font editor (lowercase slots appear, editing/saving round-trips
+    correctly, blank untouched slots aren't written).
 
 ## In progress
 

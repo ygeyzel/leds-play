@@ -34,13 +34,13 @@ games/
   logo.py              # the one place that imports Pillow (PNG -> pixel grid)
   menu/
     __init__.py        # MenuGame(Game) - the game-selection screen
-    font.py             # tiny 3x5 bitmap font for the scrolling banner text
+    font.py             # tiny 5x8 bitmap font for the scrolling banner text
     .current_game       # gitignored, created on first run
   tetris/
     __init__.py        # TetrisGame(Game) - reference migration of the original game/
     board.py            # Tetris rules/state (Board, Block)
     drawer.py            # renders the board onto a given Matrix
-    logo.png             # pixel art, 10x10, cyan T-tetromino
+    logo.png             # pixel art, 12x12, four colored blocks
     assets/               # ** not made yet ** - see "Still open" below
       bgm.wav
       sfx/
@@ -51,8 +51,11 @@ games/
     __init__.py        # SnakeGame(Game) - the second game
     board.py            # snake/apple grid logic
     drawer.py            # white border box, green snake, red apple
-    logo.png             # pixel art, 10x10, coiled snake + apple
+    logo.png             # pixel art, 12x12, a blocky green "S"
     .best_score          # gitignored, created on first run
+tools/
+  logo_editor.py       # standalone tkinter logo.png/logo_small.png painter
+  font_editor.py        # standalone tkinter games/menu/font.py glyph painter
 ```
 
 ## `Game` contract (`games/base.py`)
@@ -127,15 +130,65 @@ filesystem auto-discovery magic.
   mid-game drops straight back to the menu.
 - **Display**: on the board matrix, the selected game's logo (via
   `games/logo.py`, or a placeholder empty box if it has none yet) is drawn
-  centered, flanked by a left/right triangle indicating the D-pad changes
-  the selection. On the banner, the selected game's `NAME` scrolls
-  left-to-right in the `games/menu/font.py` bitmap font, looping with a
-  gap. The score display (from `main.py`'s existing per-tick
+  centered at `LOGO_SIZE` (12x12), flanked by a left/right triangle
+  (`ARROW_SIZE`) indicating the D-pad changes the selection. Above each
+  arrow sits a row of `PREVIEW_COUNT` small logos (`SMALL_LOGO_SIZE`,
+  6x6) - previous games above the left arrow, next games above the right
+  one, the one nearest the big logo flush with its arrow's *outer* edge
+  (mirrored between the two sides - `SMALL_LOGO_SIZE` is now wider than
+  `ARROW_SIZE`, so anchoring both sides the same naive way would overhang
+  past the matrix edge on one of them) and the rest extending outward from
+  there. The whole strip updates as LEFT/RIGHT cycle the selection. It's
+  the same `logo.png`, just decoded
+  at a smaller size via `load_logo`'s `size` argument (no separate asset
+  needed, though a hand-authored `logo_small.png` can exist alongside it
+  for a game that wants one - see `tools/logo_editor.py` below).
+  `MenuGame._load_cached_logo(game_cls, size)` caches by `(game_cls,
+  size)` since the big and small logos are separate decodes of the same
+  file. Clicking LEFT/RIGHT also blinks that side's arrow once (see
+  `ARROW_BLINK_TICKS`), same as before. On the banner, the selected
+  game's `NAME` scrolls left-to-right in the `games/menu/font.py` bitmap
+  font, with a small copy of its own logo as the separator between
+  repeats instead of a blank gap (`BANNER_LOGO_PADDING`). The score
+  display (from `main.py`'s existing per-tick
   `score_display.send_score(game.score, game.best_score)` call) shows the
   selected game's best score: `MenuGame.best_score` is a property that
   reads it via `games.base.default_score_file`/`read_best_score` (module
   functions, so no game instance is needed) instead of the plain instance
   attribute `Game.__init__` assigns for every other game.
+
+## Logo editor (`tools/logo_editor.py`)
+
+A standalone tkinter tool (`python3 tools/logo_editor.py`, no new
+dependency - Pillow's already required) for authoring `logo.png` by hand
+instead of a script: paint the big grid (`LOGO_SIZE`) and, separately, the
+small one (`SMALL_LOGO_SIZE`), pick colors from a preset palette or
+`tkinter.colorchooser`, and save. "Auto-generate from big logo" (on by
+default) keeps the small grid a nearest-neighbor downsample of the big one
+- the same thing `load_logo` does at runtime from `logo.png` alone, so
+this is what most games should ship. Painting the small canvas directly
+turns that off and saves the result as a separate `logo_small.png`
+alongside `logo.png` (the app itself doesn't read `logo_small.png` yet -
+it's there for when/if a game wants a hand-tuned small logo instead of an
+auto-shrunk one). Save targets: an existing `games.registry.GAMES` entry,
+a typed new game name (creates `games/<name>/` even though it isn't a
+real registered game yet), or a plain file-save dialog.
+
+## Font editor (`tools/font_editor.py`)
+
+A standalone tkinter tool (`python3 tools/font_editor.py`) for
+`games/menu/font.py`'s bitmap font: shows every glyph at once, sim-style
+(lit/unlit cells), click one to edit it pixel-by-pixel in a bigger view.
+Shows the full expected character set (A-Z, a-z, 0-9, space) even though
+`_GLYPHS` normally only has uppercase/digits/space - the app always
+`.upper()`s text before rendering, so lowercase has never been needed, but
+the editor still offers blank, editable slots for it in case that changes.
+"Save to font.py" rewrites just the `_GLYPHS = {...}` block in place via a
+regex match on that one block (leaving `FONT_HEIGHT`/`FONT_WIDTH`/
+`glyph_shape`/`text_shape` untouched) - and only writes a *blank* glyph if
+it was already in the file or genuinely edited this session, so opening
+the tool and saving without touching lowercase doesn't flood the file with
+36 empty entries.
 
 ## Restarting after game over
 
