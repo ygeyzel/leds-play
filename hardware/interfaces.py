@@ -16,6 +16,8 @@ class Key(Enum):
     P2_LEFT = 7
     P2_RIGHT = 8
     ENTER = 9
+    PAUSE = 10
+    MUTE = 11
 
 
 class Matrix(ABC):
@@ -65,6 +67,22 @@ class KeyHandler(ABC):
         modifier (e.g. a run/boost key) rather than a discrete command.
         Default: never held, for a backend that doesn't track this."""
         return False
+
+    def is_toggled(self, key: Key) -> bool:
+        """Whether `key` is currently toggled on - a persistent on/off
+        state flipped by each completed click (e.g. Key.PAUSE, Key.MUTE),
+        independent of get_key()'s one-shot reporting and is_pressed()'s
+        momentary hold. Default: never toggled, for a backend that
+        doesn't support this yet."""
+        return False
+
+    def set_active_keys(self, keys):
+        """Tell the backend which keys the currently active game (or the
+        menu) actually reads (its USED_KEYS), so it can show that - e.g.
+        the simulator dims an inactive button's on-screen button to gray
+        instead of its usual red, the way real hardware might light (or
+        not) that button's own inner LED.
+        Default: no-op, for a backend that doesn't support this yet."""
 
 
 class ScoreDisplay(ABC):
