@@ -342,6 +342,24 @@ just a plan).
   apart); `_KEYSYM_TO_KEY` now also maps each of those alternate-group
   keysyms to the same `Key`, so the toggle can't be silently missed
   depending on which keyboard group happens to be active.
+- **Fixed a real deadline-drift bug behind "pause slows the banner instead
+  of stopping it"**: the layout-keysym fix above wasn't the whole story -
+  `main.py::_sleep`'s paused branch did `deadline += PUMP_INTERVAL` each
+  iteration, which only accounts for that iteration's `sleep()` call, not
+  `pump()`'s own (non-zero) execution time; every iteration's real elapsed
+  time is `PUMP_INTERVAL` plus that uncounted cost, so `remaining` drains
+  by that cost every single iteration regardless of how long it's been
+  paused, guaranteed - not a rare edge case. For the menu's fast 0.07s
+  turn interval this drains fast enough to let a tick slip through every
+  second or so, which reads as "the banner slows down" rather than a
+  clean freeze; a longer turn_interval (e.g. Tetris's) just made it slow
+  enough to be easy to miss in a short test. Fixed by never touching
+  `deadline` while paused at all (only recomputing `remaining` once
+  actually unpaused), which cannot drift by construction. Verified with an
+  ImageMagick `compare -metric AE` pixel diff of two screenshots 10s
+  apart while paused: 56832 differing pixels on the old code, 0 on the
+  fixed code (same test, same 10s window) - a clean, numeric before/after,
+  not just an eyeballed screenshot comparison.
 
 ## In progress
 
