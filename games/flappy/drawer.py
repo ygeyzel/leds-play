@@ -10,7 +10,7 @@ from games.flappy.board import (
     PIPE_WIDTH,
     Board,
 )
-from hardware.interfaces import Matrix
+from platforms.interfaces import Matrix
 
 BOARD_POS_0 = (6, 3)
 

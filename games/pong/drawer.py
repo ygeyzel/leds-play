@@ -2,7 +2,7 @@ from typing import Optional
 
 from common.common import add_positions
 from games.pong.board import BALL_COLOR_HSV, BORDER_COLOR_HSV, PADDLE_COLOR_HSV, PADDLE_HEIGHT, Board
-from hardware.interfaces import Matrix
+from platforms.interfaces import Matrix
 
 BOARD_POS_0 = (4, 3)
 

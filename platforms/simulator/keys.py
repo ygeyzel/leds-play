@@ -1,5 +1,5 @@
-from hardware.interfaces import Key, KeyHandler
-from hardware.simulator.window import get_window
+from platforms.interfaces import Key, KeyHandler
+from platforms.simulator.window import get_window
 
 _KEYSYM_TO_KEY = {
     "Up": Key.UP,

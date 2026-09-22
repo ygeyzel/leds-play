@@ -1,6 +1,6 @@
 from RPi import GPIO
 
-from hardware.interfaces import Key, KeyHandler
+from platforms.interfaces import Key, KeyHandler
 
 GPIO.setmode(GPIO.BCM)
 

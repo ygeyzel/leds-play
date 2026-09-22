@@ -2,7 +2,7 @@ from typing import Optional
 
 from common.common import add_positions
 from games.snake.board import APPLE_COLOR_HSV, SNAKE_COLOR_HSV, Board
-from hardware.interfaces import Matrix
+from platforms.interfaces import Matrix
 
 BOARD_POS_0 = (6, 2)
 BORDER_COLOR_HSV = (0, 0, 0.4)  # white box around the play area

@@ -4,7 +4,7 @@ from typing import Optional
 
 from common.common import BOARD_DIMS, add_positions
 from games.tetris.board import Board
-from hardware.interfaces import Matrix
+from platforms.interfaces import Matrix
 
 BOARD_POS_0 = (8, 2)
 

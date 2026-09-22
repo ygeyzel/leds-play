@@ -2,7 +2,7 @@ from collections import deque
 from enum import Enum
 from random import randint
 
-from hardware.interfaces import Key
+from platforms.interfaces import Key
 
 BOARD_DIMS = (16, 16)
 

@@ -1,6 +1,6 @@
 from random import choice
 
-from hardware.interfaces import Key, KeyHandler
+from platforms.interfaces import Key, KeyHandler
 
 COURT_DIMS = (24, 34)  # rows, cols - the playable area, excluding the border
 PADDLE_HEIGHT = 5
