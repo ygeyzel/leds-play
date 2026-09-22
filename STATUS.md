@@ -29,18 +29,18 @@ just a plan).
 - Repo renamed/repurposed to `leds-play`; git repo initialized.
 - Project direction agreed with the user: multi-game, dual-mode
   (rpi/simulator), expandable hardware.
-- **Hardware abstraction boundary defined**: `hardware/interfaces.py` holds
+- **Hardware abstraction boundary defined**: `platforms/interfaces.py` holds
   the `Matrix` / `KeyHandler` / `ScoreDisplay` ABCs and the shared `Key`
-  enum; `hardware/canvas.py` holds the hardware-agnostic `Canvas` drawing
-  surface (moved out of the old `hardware/leds.py`, unchanged otherwise).
+  enum; `platforms/canvas.py` holds the hardware-agnostic `Canvas` drawing
+  surface (moved out of the old `platforms/leds.py`, unchanged otherwise).
   Game code (now `games/tetris/`, see below) only imports from
-  `hardware.interfaces`/`hardware.factory`, never `RPi.GPIO`/`rpi_ws281x`
+  `platforms.interfaces`/`platforms.factory`, never `RPi.GPIO`/`rpi_ws281x`
   directly.
-- **`rpi` backend** (`hardware/rpi/`): `leds.py` (`DualMatrix`), `keys.py`
+- **`rpi` backend** (`platforms/rpi/`): `leds.py` (`DualMatrix`), `keys.py`
   (`RpiKeyHandler`), `score.py` (`SerialScoreDisplay`) — adapted from the
-  original inherited modules (which are now removed from `hardware/`'s top
+  original inherited modules (which are now removed from `platforms/`'s top
   level) to implement the new interfaces; behavior unchanged.
-- **`simulator` backend** (`hardware/simulator/`), built with tkinter:
+- **`simulator` backend** (`platforms/simulator/`), built with tkinter:
   - `leds.py` (`SimulatorMatrix`) — pixel-for-pixel stand-in for the real
     16x32 dual matrix, same `dimensions`/`__setitem__` contract as the rpi
     `DualMatrix`.
@@ -53,7 +53,7 @@ just a plan).
   - `window.py` — the single shared `Tk` window/canvas the three backends
     above draw into.
 - **Mode switch**: `python main.py [rpi|sim]` (defaults to `rpi`), wired via
-  `hardware/factory.py` (`create_matrix`/`create_key_handler`/
+  `platforms/factory.py` (`create_matrix`/`create_key_handler`/
   `create_score_display`) which lazily imports the rpi-only modules only
   when `mode == "rpi"`, so `sim` mode and `tests/` never touch
   `RPi.GPIO`/`rpi_ws281x`/`pyserial`.
@@ -69,12 +69,12 @@ just a plan).
   `requirements*.txt` files.
 - **`sim`-mode hardware expansion** (roadmap item 3 below, sim side only):
   - Board matrix panel count is now a CLI flag, `--num-of-matrices`
-    (default 5, was hardcoded to 2) — `hardware/factory.py`'s
-    `create_matrix`/`hardware/simulator/leds.py`'s `SimulatorMatrix` take
+    (default 5, was hardcoded to 2) — `platforms/factory.py`'s
+    `create_matrix`/`platforms/simulator/leds.py`'s `SimulatorMatrix` take
     `num_of_matrices` instead of assuming 2.
   - New banner area: a second, independent matrix drawn above the board
     matrix in the simulator window, sized via `--size-of-banner` (default
-    2, panels are 8 rows x 32 cols each). `hardware/factory.py`'s new
+    2, panels are 8 rows x 32 cols each). `platforms/factory.py`'s new
     `create_banner_matrix()`; `Drawer` now holds `self._banner_matrix`
     alongside `self._matrix`, but nothing draws game content into it yet.
   - New buttons: a 2nd D-pad (`Key.P2_UP/DOWN/LEFT/RIGHT`, `WASD` in sim)
@@ -82,7 +82,7 @@ just a plan).
     player/game and menu navigation respectively. Tetris doesn't use them
     (`Board.advance_turn` now ignores keys it doesn't recognize instead of
     raising `KeyError`, so pressing them during a game is a harmless no-op).
-  - `hardware/rpi/*` deliberately untouched (still hardcoded to 2 panels,
+  - `platforms/rpi/*` deliberately untouched (still hardcoded to 2 panels,
     4 buttons, no banner) — the rpi backend is now out of sync with the
     sim backend's capabilities; `create_matrix`/`create_banner_matrix`
     print a warning and fall back to the old rpi behavior (or `None` for
@@ -273,14 +273,14 @@ just a plan).
     correctly, blank untouched slots aren't written).
 
 - **Pause/mute toggle buttons + active-button dimming in `sim`**:
-  - `hardware/interfaces.py`'s `Key` enum gained `PAUSE` and `MUTE`;
+  - `platforms/interfaces.py`'s `Key` enum gained `PAUSE` and `MUTE`;
     `KeyHandler` gained `is_toggled(key)` (a persistent on/off state
     flipped by each completed click, independent of `get_key()`'s one-shot
     reporting and `is_pressed()`'s momentary hold) and `set_active_keys(keys)`
     (tells the backend which keys the current game/menu actually reads).
     Both default to no-op/never-toggled for a backend that doesn't support
-    them yet (`hardware/rpi/keys.py` is unaffected).
-  - `hardware/simulator/keys.py`: P/M on-screen buttons next to Enter, in a
+    them yet (`platforms/rpi/keys.py` is unaffected).
+  - `platforms/simulator/keys.py`: P/M on-screen buttons next to Enter, in a
     neutral blue-gray instead of the D-pad's red, lit brighter while
     toggled on. Every D-pad/Enter button the active game doesn't list in
     its `USED_KEYS` now dims to gray instead of red (an idea that started
@@ -332,7 +332,7 @@ just a plan).
   machine's dual `us,il` keyboard layout means the physical P/M/W/A/S/D
   keys produce different X keysyms (`hebrew_pe`, `hebrew_zade`,
   `apostrophe`, `hebrew_shin`, `hebrew_dalet`, `hebrew_gimel`) when the
-  Hebrew group is active, which `hardware/simulator/keys.py`'s
+  Hebrew group is active, which `platforms/simulator/keys.py`'s
   `_KEYSYM_TO_KEY` didn't recognize - a press while that group happened to
   be active was silently dropped (not bound to anything), which could look
   like Pause working unreliably. Traced this down while investigating a
@@ -426,6 +426,60 @@ just a plan).
     live-incrementing score and multiple pipes coexisting on screen
     correctly; confirmed `best_score` persists to `.best_score` (unlike
     Pong) and is read back on a later launch.
+- **Implemented audio** (`AudioPlayer` contract from `GAME_TEMPLATE.md`,
+  Tetris wired up as the first game to use it):
+  - `platforms/interfaces.py` - `AudioPlayer` ABC: `play_bgm(path,
+    loop=True)`, `stop_bgm()`, `play_sfx(path)`, `set_muted(muted)`.
+  - `platforms/simulator/audio.py` - `SimulatorAudioPlayer`, backed by
+    `pygame.mixer`: background music on the dedicated music channel,
+    sound effects as one-shot `Sound`s on whatever channel pygame picks,
+    so an sfx never interrupts the bgm. Muting stops the bgm outright and
+    remembers the last `play_bgm()` call to resume from the start on
+    unmute; sfx just skip playing while muted (too short-lived to need
+    stopping mid-play). `pygame` added to the base dependencies (sim-side
+    only, same as Pillow).
+  - `platforms/rpi/audio.py` - `RpiAudioPlayer`, a no-op stub, same
+    pattern `create_matrix`/`create_banner_matrix` already use for other
+    rpi/sim capability gaps.
+  - `platforms/factory.py` - `create_audio_player(mode)`.
+  - `games/base.py` - `Game` gained a `stop()` hook (default no-op),
+    called once when a game is left for something else (the menu, or a
+    different game) - not on a same-instance restart, where `start()`
+    runs again instead. A game with background music stops it here so it
+    doesn't keep playing into whatever runs next.
+  - `main.py` - creates the one `AudioPlayer` alongside the matrix/key
+    handler/score display, threads it into every game's constructor (as
+    `audio_player=`, following the existing shared-resource convention -
+    unused by Snake/Pong/Flappy Bird for now, accepted for the
+    convention) and into `game_loop`/`_sleep`. `_sleep` syncs
+    `Key.MUTE`'s toggle state to `audio_player.set_muted()` on every pump
+    (same cadence as the existing `Key.PAUSE` check), for near-instant
+    mute/unmute regardless of the current turn's length. `main()` calls
+    `active.stop()` right before switching away from a game to the menu.
+  - `games/tetris/board.py` - `Board` gained an `on_lines_cleared`
+    callback (same pattern as the existing `burn_animation` hook),
+    invoked once per turn (after the row-clearing loop, not once per row)
+    with the total line count if any lines cleared.
+  - `games/tetris/__init__.py` - `TetrisGame.BGM_PATH`/`SFX_PATHS` point
+    at the four assets the user supplied (`bg_music.mp3`, `game-over.wav`,
+    `1-line-clear.wav`, `4-lines-clear.wav`): bgm starts looping in
+    `start()`, stops in the new `stop()` override; `on_lines_cleared`
+    plays `tetris_clear` for a 4-line clear or `line_clear` for 1-3, exactly
+    once per turn either way (never the 1-line sound repeated for a
+    4-line clear); `on_round_end` (game over) stops the bgm, plays
+    `game_over`, then immediately restarts the bgm loop so it "returns to
+    play" under the game-over blink screen.
+  - Verified end-to-end against the real running app (not just the
+    isolated `AudioPlayer`): a live PulseAudio stream appears the moment
+    Tetris starts; `pygame.mixer.music.get_busy()` toggles
+    True→False→True across a real M-key mute/unmute in the running
+    process; filling the board to force 1/2/3/4-line clears (bypassing
+    normal play, directly on the real `TetrisGame`/`Board`/
+    `SimulatorAudioPlayer` trio `main.py` itself constructs) plays exactly
+    one sfx per clear - `1-line-clear.wav` for 1-3 lines, `4-lines-clear.wav`
+    for 4, never both and never repeated; a real `on_round_end` call
+    confirms bgm is busy before game over, `game-over.wav` plays once, and
+    bgm is busy again (resumed) afterward.
 
 ## In progress
 
@@ -435,13 +489,10 @@ Nothing active right now — see "Not started yet" for what's next.
 
 Roughly in the order they'll likely need to happen:
 
-1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
-   and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
-   game defines `BGM_PATH`/`SFX_PATHS` yet.
-2. **Expand the hardware config**: **partially done, sim side only** (see
+1. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
-   - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
+   - `platforms/rpi/*` doesn't support any of this yet (still fixed at 2
      panels / 4 buttons / no banner) — needs real panel-count wiring math
      generalized in `DualMatrix`, GPIO pins picked for the 5 new buttons
      and a banner strip, and a rpi banner-matrix implementation.
@@ -450,6 +501,10 @@ Roughly in the order they'll likely need to happen:
      gets extra unused columns to the right for now).
    - None of the four games render anything into the banner (the menu
      does; all of them just leave it blank while playing).
+2. **Audio on the other games**: Snake/Pong/Flappy Bird all accept
+   `audio_player` (per the shared constructor convention) but don't use it
+   yet - no `BGM_PATH`/`SFX_PATHS` of their own. `platforms/rpi/audio.py`
+   is also still a no-op stub - real Pi audio hardware/wiring is TBD.
 3. **More games**: Tetris, Snake, Pong and Flappy Bird are done - see
    `GAME_TEMPLATE.md` for the per-game contract new ones follow. No
    specific next game is planned yet.

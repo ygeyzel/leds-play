@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 from common.common import HsvColor, Position
-from hardware.canvas import Canvas
+from platforms.canvas import Canvas
 
 
 class Key(Enum):
@@ -83,6 +83,33 @@ class KeyHandler(ABC):
         instead of its usual red, the way real hardware might light (or
         not) that button's own inner LED.
         Default: no-op, for a backend that doesn't support this yet."""
+
+
+class AudioPlayer(ABC):
+    """Contract an audio backend must satisfy so game code never talks to
+    pygame.mixer (or any other backend) directly."""
+
+    @abstractmethod
+    def play_bgm(self, path: str, loop: bool = True):
+        """Start background music from `path`, replacing whatever was
+        already playing. Muted has no immediate audible effect but is
+        remembered - see set_muted()."""
+
+    @abstractmethod
+    def stop_bgm(self):
+        """Stop whatever background music is currently playing."""
+
+    @abstractmethod
+    def play_sfx(self, path: str):
+        """Play a one-shot sound effect from `path`, without interrupting
+        any currently-playing background music. A no-op while muted."""
+
+    @abstractmethod
+    def set_muted(self, muted: bool):
+        """Mute/unmute all audio. Muting stops any background music
+        outright (sound effects are too short-lived to need stopping
+        mid-play); unmuting resumes the most recent play_bgm() call, if
+        any, from the start."""
 
 
 class ScoreDisplay(ABC):

@@ -6,7 +6,7 @@ from random import choice
 from typing import Optional
 
 from common.common import add_positions
-from hardware.interfaces import Key
+from platforms.interfaces import Key
 
 BRICKS_VAL = 0.1
 
@@ -57,6 +57,7 @@ class Board:
         self.level = None
 
         self.burn_animation = None
+        self.on_lines_cleared = None
 
     def dimensions_for_canvas(self):
         return self.dimensions
@@ -189,7 +190,10 @@ class Board:
 
                 self.board[0] = [None for _ in range(self.dimensions[1])]
                 self.score += 30 * lines
-        
+
+        if lines and self.on_lines_cleared:
+            self.on_lines_cleared(lines)
+
         self._level_advancing(lines)
 
     def _check_overlapping(self, pos, shape):

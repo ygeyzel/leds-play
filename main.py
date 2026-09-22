@@ -4,8 +4,14 @@ from time import sleep, time
 from games.base import Game
 from games.menu import MenuGame
 from games.registry import GAMES
-from hardware.factory import create_banner_matrix, create_key_handler, create_matrix, create_score_display
-from hardware.interfaces import Key, KeyHandler
+from platforms.factory import (
+    create_audio_player,
+    create_banner_matrix,
+    create_key_handler,
+    create_matrix,
+    create_score_display,
+)
+from platforms.interfaces import AudioPlayer, Key, KeyHandler
 
 # Physical rig layout: shared by the menu and every game, so it's owned
 # here rather than by any one game (see games/tetris/drawer.py, which used
@@ -67,13 +73,15 @@ def init_game(game: Game, key_handler: KeyHandler):
 PUMP_INTERVAL = 0.02
 
 
-def _sleep(seconds: float, key_handler: KeyHandler):
+def _sleep(seconds: float, key_handler: KeyHandler, audio_player: AudioPlayer):
     """Sleep in small slices, pumping the key handler between them so a
     backend that needs to service a GUI event loop (the simulator) stays
     responsive instead of freezing for the whole turn. While Key.PAUSE is
     toggled on, the deadline is left untouched instead of counting down -
     the turn clock halts exactly, with no drift, but keys (including
-    PAUSE itself, to unpause) keep being read every pump.
+    PAUSE itself, to unpause) keep being read every pump. Key.MUTE is
+    synced to the audio player on every pump too, for near-instant mute/
+    unmute regardless of how long the current turn's sleep is.
 
     The deadline must never be nudged forward by a fixed PUMP_INTERVAL
     per paused iteration (an earlier version did this): pump() itself
@@ -88,6 +96,7 @@ def _sleep(seconds: float, key_handler: KeyHandler):
     deadline = time() + seconds
     while True:
         key_handler.pump()
+        audio_player.set_muted(key_handler.is_toggled(Key.MUTE))
         if key_handler.is_toggled(Key.PAUSE):
             sleep(PUMP_INTERVAL)
             continue
@@ -97,7 +106,7 @@ def _sleep(seconds: float, key_handler: KeyHandler):
         sleep(min(PUMP_INTERVAL, remaining))
 
 
-def game_loop(score_display, game: Game, key_handler: KeyHandler) -> bool:
+def game_loop(score_display, game: Game, key_handler: KeyHandler, audio_player: AudioPlayer) -> bool:
     """Runs one round of `game`. Returns True if the player asked to
     restart the same game from its game-over screen (an arrow key), False
     if control should go back to the menu instead."""
@@ -106,7 +115,7 @@ def game_loop(score_display, game: Game, key_handler: KeyHandler) -> bool:
     score_display.send_score(game.score, game.best_score)
 
     while not game.is_game_over():
-        _sleep(game.turn_interval, key_handler)
+        _sleep(game.turn_interval, key_handler, audio_player)
 
         key = key_handler.get_key()
         if key == Key.ENTER and Key.ENTER not in game.USED_KEYS:
@@ -125,21 +134,23 @@ def main():
 
     matrix, banner_matrix = create_matrices(mode, args.num_of_matrices, args.size_of_banner)
     key_handler = create_key_handler(mode)
-    menu = MenuGame(matrix, banner_matrix, key_handler)
+    audio_player = create_audio_player(mode)
+    menu = MenuGame(matrix, banner_matrix, key_handler, audio_player=audio_player)
 
     active = menu
     if args.start_game:
         game_cls = next(g for g in GAMES if g.NAME == args.start_game)
-        active = game_cls(matrix, banner_matrix, key_handler)
+        active = game_cls(matrix, banner_matrix, key_handler, audio_player=audio_player)
 
     with create_score_display(mode) as score_display:
         while True:
             init_game(active, key_handler)
-            restart = game_loop(score_display, active, key_handler)
+            restart = game_loop(score_display, active, key_handler, audio_player)
 
             if active is menu:
-                active = menu.selected_game_cls(matrix, banner_matrix, key_handler)
+                active = menu.selected_game_cls(matrix, banner_matrix, key_handler, audio_player=audio_player)
             elif not restart:
+                active.stop()
                 active = menu
             # else: an arrow key on the game-over screen - keep playing
             # the same game, init_game() will start() it fresh next loop.

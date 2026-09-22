@@ -5,8 +5,9 @@ the shared contract every game (Tetris, Snake, Pong, Flappy Bird, ...)
 implements, and the files/assets each one ships alongside its code.
 
 The `Game` contract, Tetris's migration behind it, the menu, Snake (the
-second game), Pong (the third, and first 2-player game) and Flappy Bird
-(the fourth) are all done. Audio is still just a plan (see "Still open").
+second game), Pong (the third, and first 2-player game), Flappy Bird (the
+fourth) and audio (see "Audio" below, Tetris is the first game to use it)
+are all done.
 
 ## Decisions already made
 
@@ -19,12 +20,13 @@ second game), Pong (the third, and first 2-player game) and Flappy Bird
   hand-written pixel grid literal).
 - **Best-score storage**: one file per game, next to that game's own code
   (not a shared root-level file).
-- **Matrix/input ownership**: `main.py` creates the one board `Matrix`,
-  banner `Matrix` and `KeyHandler` for the whole process and hands them to
-  whichever `Game` is currently active (the menu, or a real game) -
-  hardware only gets initialized once, not once per game. This is why
-  every `Game` subclass's `__init__` takes `(matrix, banner_matrix=None,
-  key_handler=None, score_file=None)` rather than building its own.
+- **Matrix/input/audio ownership**: `main.py` creates the one board
+  `Matrix`, banner `Matrix`, `KeyHandler` and `AudioPlayer` for the whole
+  process and hands them to whichever `Game` is currently active (the
+  menu, or a real game) - hardware only gets initialized once, not once
+  per game. This is why every `Game` subclass's `__init__` takes `(matrix,
+  banner_matrix=None, key_handler=None, audio_player=None,
+  score_file=None)` rather than building its own.
 
 ## Layout
 
@@ -42,11 +44,10 @@ games/
     board.py            # Tetris rules/state (Board, Block)
     drawer.py            # renders the board onto a given Matrix
     logo.png             # pixel art, 12x12, four colored blocks
-    assets/               # ** not made yet ** - see "Still open" below
-      bgm.wav
-      sfx/
-        line_clear.wav
-        game_over.wav
+    bg_music.mp3         # looped background music - see "Audio" below
+    game-over.wav         # played once on game over
+    1-line-clear.wav      # played for a 1-3 line clear
+    4-lines-clear.wav     # played for a 4-line clear
     .best_score          # gitignored, created on first run
   snake/
     __init__.py        # SnakeGame(Game) - the second game
@@ -85,19 +86,24 @@ class Game(ABC):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Matrix | None = None,
-        key_handler: KeyHandler | None = None, score_file: str | None = None,
+        key_handler: KeyHandler | None = None, audio_player: AudioPlayer | None = None,
+        score_file: str | None = None,
     ):
         ...  # build whatever canvases this game needs from matrix/banner_matrix;
-             # store key_handler only if turn_interval needs is_pressed() (see below)
+             # store key_handler only if turn_interval needs is_pressed() (see below);
+             # store audio_player only if this game defines BGM_PATH/SFX_PATHS
         super().__init__(score_file)
     # Game.__init__ itself only takes score_file - it doesn't touch
-    # matrix/banner_matrix/key_handler, those are purely a subclass
-    # constructor convention.
+    # matrix/banner_matrix/key_handler/audio_player, those are purely a
+    # subclass constructor convention.
     # _read_best_score/_update_best_score: generalized from the original
     # Tetris-only game/game_board.py (lines 223-236).
 
     @abstractmethod
     def start(self): ...
+    def stop(self): ...   # optional; called once when leaving this game for something else
+                           # (the menu, or a different game) - not on a same-instance restart.
+                           # default: no-op. a game with background music stops it here.
     @property
     @abstractmethod
     def score(self) -> int: ...
@@ -255,7 +261,7 @@ not wait for it to be released.
 
 `KeyHandler.is_pressed(key) -> bool` (default `False`) answers that,
 backed by a `_held_keys` set both backends update on every press/release
-(`hardware/simulator/keys.py`, `hardware/rpi/keys.py`), independent of the
+(`platforms/simulator/keys.py`, `platforms/rpi/keys.py`), independent of the
 `_last_key_pressed`/`_key_clicked` one-shot click machinery `get_key()`
 uses. Since `Game.turn_interval` is a property (no way to pass it the
 key_handler per call), a game that needs `is_pressed` stores the
@@ -332,29 +338,52 @@ The fourth game, and the first single-key one - `USED_KEYS = {Key.UP}`:
   it uses `Game`'s default file-backed `best_score`/`_update_best_score()`
   behavior unchanged - no override needed.
 
-## Still open: Audio
-
-New contract in `hardware/interfaces.py`:
+## Audio (`platforms/interfaces.py`'s `AudioPlayer`)
 
 ```python
 class AudioPlayer(ABC):
     def play_bgm(self, path: str, loop: bool = True): ...
     def stop_bgm(self): ...
     def play_sfx(self, path: str): ...
+    def set_muted(self, muted: bool): ...
 ```
 
-- `hardware/simulator/audio.py` - real implementation using `pygame.mixer`
-  (cross-platform, handles looped bgm plus overlapping sfx; `winsound` was
-  the only stdlib alternative and isn't cross-platform). Would need adding
-  to base `requirements.txt`.
-- `hardware/rpi/audio.py` - stub that no-ops for now, same pattern
+- `platforms/simulator/audio.py` - `SimulatorAudioPlayer`, backed by
+  `pygame.mixer` (cross-platform, handles looped bgm plus overlapping sfx
+  on separate channels so one never interrupts the other; `winsound` was
+  the only stdlib alternative and isn't cross-platform). `pygame` is a
+  base dependency now (sim-side only, same as Pillow). Muting stops the
+  bgm outright and remembers the last `play_bgm()` call to resume from the
+  start on unmute; sfx just skip playing while muted.
+- `platforms/rpi/audio.py` - `RpiAudioPlayer`, a no-op stub, same pattern
   `create_matrix`/`create_banner_matrix` already use for the rpi/sim
   capability gap. Left for a future session to fill in with real Pi audio
   wiring (speaker/DAC choice, GPIO/I2S specifics - all TBD, out of scope
   here).
-- `hardware/factory.py` would get a new `create_audio_player(mode)`.
-
-Not started - no game defines `BGM_PATH`/`SFX_PATHS` yet either.
+- `platforms/factory.py`'s `create_audio_player(mode)` picks between them.
+- `Game` (`games/base.py`) gained a `stop()` hook (default no-op), called
+  once when a game is left for something else (the menu, or a different
+  game) - not on a same-instance restart, where `start()` runs again
+  instead. A game with background music stops it here.
+- `main.py` creates the one `AudioPlayer` for the whole process (alongside
+  the matrix/key handler/score display) and threads it into every game's
+  constructor as `audio_player=`, following the existing shared-resource
+  convention (unused by a game with no sound assets, accepted for the
+  convention same as an unused `key_handler`). `_sleep` syncs `Key.MUTE`'s
+  toggle state to `audio_player.set_muted()` on every pump, same cadence
+  as the existing `Key.PAUSE` check.
+- **Tetris** (`games/tetris/`) is the first game to use it:
+  `BGM_PATH`/`SFX_PATHS` point at `bg_music.mp3`/`game-over.wav`/
+  `1-line-clear.wav`/`4-lines-clear.wav`. `start()` starts the bgm loop,
+  the new `stop()` override stops it. `Board` gained an `on_lines_cleared`
+  callback (same pattern as its existing `burn_animation` hook), fired
+  once per turn (after the row-clearing loop, not once per row) with the
+  total line count - `TetrisGame` plays the 4-line sfx for a 4-line clear
+  or the 1-line sfx for 1-3, exactly once either way (the 1-line sound
+  never repeats for a 4-line clear). `on_round_end` (game over) stops the
+  bgm, plays the game-over sfx, then immediately restarts the bgm loop so
+  it resumes under the game-over blink screen. Snake/Pong/Flappy Bird
+  don't define `BGM_PATH`/`SFX_PATHS` yet.
 
 ## Best-score files
 

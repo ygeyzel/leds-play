@@ -1,6 +1,8 @@
 # Base/cross-platform dependencies (simulator mode, tests).
 # The simulator itself uses tkinter, which ships with the Python standard
-# library. Pillow decodes game logo.png files (games/logo.py).
+# library. Pillow decodes game logo.png files (games/logo.py). pygame's
+# mixer plays background music/sound effects (platforms/simulator/audio.py).
 #
 # For rpi mode (real hardware), also install requirements-rpi.txt.
 Pillow
+pygame

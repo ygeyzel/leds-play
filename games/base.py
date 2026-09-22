@@ -3,7 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from time import sleep, time
 
-from hardware.interfaces import Key, KeyHandler
+from platforms.interfaces import Key, KeyHandler
 
 RESTART_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
 
@@ -61,6 +61,13 @@ class Game(ABC):
     @abstractmethod
     def start(self):
         """Reset game state for a new round."""
+
+    def stop(self):
+        """Called once when this game is being left for something else
+        (the menu, or a different game) - not on a same-instance restart,
+        where start() runs again instead. Default: no-op; a game with
+        background music should stop it here, so it doesn't keep playing
+        into whatever runs next."""
 
     @property
     @abstractmethod
