@@ -8,7 +8,6 @@ from games.menu.font import FONT_HEIGHT, text_shape
 from games.registry import GAMES
 from hardware.interfaces import Key, Matrix
 
-
 LOGO_SIZE = (12, 12)
 SMALL_LOGO_SIZE = (6, 6)
 PREVIEW_COUNT = 2  # small logos above each arrow, innermost aligned with it

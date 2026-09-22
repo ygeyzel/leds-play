@@ -27,7 +27,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from games.menu import LOGO_SIZE, SMALL_LOGO_SIZE  # noqa: E402
 from games.registry import GAMES  # noqa: E402
 
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAMES_DIR = os.path.join(REPO_ROOT, "games")
 

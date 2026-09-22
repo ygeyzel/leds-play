@@ -5,7 +5,6 @@ from time import sleep, time
 
 from hardware.interfaces import Key, KeyHandler
 
-
 RESTART_KEYS = frozenset({Key.UP, Key.DOWN, Key.LEFT, Key.RIGHT})
 
 

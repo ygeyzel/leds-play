@@ -2,7 +2,6 @@ from random import choice
 
 from hardware.interfaces import Key, KeyHandler
 
-
 COURT_DIMS = (24, 34)  # rows, cols - the playable area, excluding the border
 PADDLE_HEIGHT = 5
 PADDLE_COL_INSET = 1  # the ball bounces this many cells in from the left/right border

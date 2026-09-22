@@ -1,5 +1,4 @@
 import math
-
 from enum import Enum
 from functools import partial
 from itertools import product
@@ -8,7 +7,6 @@ from typing import Optional
 
 from common.common import add_positions
 from hardware.interfaces import Key
-
 
 BRICKS_VAL = 0.1
 

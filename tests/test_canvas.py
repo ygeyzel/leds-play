@@ -2,7 +2,6 @@ from itertools import product
 
 from tests.shared import matrix_test
 
-
 OO = None
 C0 = (120, 0.2, 0.1)
 C1 = (120, 0.7, 0.1)

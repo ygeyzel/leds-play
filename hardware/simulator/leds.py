@@ -4,7 +4,6 @@ from common.common import HsvColor, Position, hsv_to_rgb, is_position_out_of_ran
 from hardware.interfaces import Matrix
 from hardware.simulator.window import get_window
 
-
 UNLIT_COLOR = "#000000"
 BRIGTHNESS_FACTOR = 5
 

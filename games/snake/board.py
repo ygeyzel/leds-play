@@ -4,7 +4,6 @@ from random import randint
 
 from hardware.interfaces import Key
 
-
 BOARD_DIMS = (16, 16)
 
 INITIAL_LENGTH = 3
