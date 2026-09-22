@@ -360,6 +360,45 @@ just a plan).
   apart while paused: 56832 differing pixels on the old code, 0 on the
   fixed code (same test, same 10s window) - a clean, numeric before/after,
   not just an eyeballed screenshot comparison.
+- **Implemented Pong** (`games/pong/`) as the third game and the first
+  2-player one:
+  - `board.py` - a 24x34 court; left paddle on `Key.P2_UP`/`Key.P2_DOWN`
+    ("W"/"S" in `sim`), right paddle on `Key.UP`/`Key.DOWN`. Both read
+    continuously via `KeyHandler.is_pressed()` each turn (like Snake's run
+    boost) rather than one-shot `get_key()` clicks, so `advance_turn`'s
+    `key` argument goes unused - this lets both players move within the
+    same turn instead of one command winning per turn. The ball moves
+    diagonally, bounces off the top/bottom walls and a paddle that's lined
+    up with it, and scores the other side a point (re-serving from center
+    in a random direction) when it reaches an edge with no paddle there.
+    First to `POINTS_TO_WIN` (7) ends the round.
+  - `drawer.py` - same full white border box as Snake, two cyan paddles
+    flush against the inside of the left/right border, a white ball; both
+    paddles blink (180-degree hue flip) on game over, same idea as
+    Tetris/Snake's board blink.
+  - **No persisted best score** (as asked): a 2-player match has no
+    meaningful single-player high score, so `PongGame.best_score` is
+    overridden as a read-only property returning the right paddle's live
+    score (same no-op-setter trick `MenuGame.best_score` already uses)
+    instead of the usual file-backed value, and `_update_best_score()` is
+    simply never called - no `.best_score` file is ever created.
+    `main.py`'s existing `send_score(game.score, game.best_score)` call
+    then shows both players' live scores on the two 7-segment rows (left
+    paddle on the bottom row, right paddle on top) with no changes needed
+    to `main.py` or the `Game` base class.
+  - Real logo art: `games/pong/logo.png`, two bold cyan paddle bars and a
+    white ball on a 12x12 grid, same simple-block style as Tetris/Snake's.
+  - Registered in `games/registry.py` (`GAMES = [TetrisGame, SnakeGame,
+    PongGame]`).
+  - Verified in `sim`: launched directly (`--start-game Pong`) and via the
+    menu (name scrolls on the banner, logo shows correctly, active-key
+    coloring is right - both arrows and W/S red, A/D gray); held Up to
+    move the right paddle and confirmed it actually moves; let a match
+    play out to 7 points and confirmed the round actually ends (paddles
+    visibly blink orange, scores freeze) rather than continuing past the
+    win score; restarted with an arrow key and confirmed paddles/ball/
+    scores/colors all reset; confirmed no `.best_score` file ever appears
+    under `games/pong/`.
 
 ## In progress
 
@@ -372,13 +411,7 @@ Roughly in the order they'll likely need to happen:
 1. **Audio**: the `AudioPlayer` contract, `pygame.mixer`-based sim backend,
    and rpi no-op stub from `GAME_TEMPLATE.md` haven't been built, and no
    game defines `BGM_PATH`/`SFX_PATHS` yet.
-2. **Simulator pause/mute keys**: add `P` (pause the game loop) and `M`
-   (mute/unmute music) to `hardware/simulator/keys.py`, sim mode only.
-   Global controls, not a per-game command, so probably handled directly
-   in `main.py`'s `game_loop` (like the existing `Key.ENTER`-to-menu
-   handling) rather than via a game's `USED_KEYS`/`advance_turn`. Mute is
-   a no-op until item 1 (audio) exists.
-3. **Expand the hardware config**: **partially done, sim side only** (see
+2. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
    - `hardware/rpi/*` doesn't support any of this yet (still fixed at 2
@@ -388,10 +421,11 @@ Roughly in the order they'll likely need to happen:
    - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
      Tetris layout constants (unaffected by the bigger matrix — Tetris just
      gets extra unused columns to the right for now).
-   - Neither Tetris nor Snake render anything into the banner (the menu
-     does; both just leave it blank while playing) or react to the 2nd
-     D-pad beyond Snake's `Key.P2_UP` run boost.
-4. **Implement More Games** ...
+   - Neither Tetris, Snake, nor Pong render anything into the banner (the
+     menu does; all three just leave it blank while playing).
+3. **More games**: Tetris, Snake and Pong are done - see `GAME_TEMPLATE.md`
+   for the per-game contract new ones follow. No specific next game is
+   planned yet.
 
 ## Open questions for the user
 
