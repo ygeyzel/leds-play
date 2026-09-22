@@ -1,6 +1,6 @@
 from time import sleep
 
-from hardware.rpi.keys import RpiKeyHandler
+from platforms.rpi.keys import RpiKeyHandler
 
 
 def test_get_key():

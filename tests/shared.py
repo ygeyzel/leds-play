@@ -1,4 +1,4 @@
-from hardware.rpi.leds import DualMatrix
+from platforms.rpi.leds import DualMatrix
 
 
 def matrix_test(test):

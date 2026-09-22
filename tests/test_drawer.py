@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 from games.tetris.board import BLOCK_SHAPES, Block, Direction
 from games.tetris.drawer import Drawer
-from hardware.rpi.leds import DualMatrix
+from platforms.rpi.leds import DualMatrix
 from tests.shared import matrix_test
 
 board_pos_0 = [

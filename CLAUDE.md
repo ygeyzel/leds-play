@@ -21,10 +21,10 @@ description below.
     for the matrix (pixel-for-pixel) and keyboard arrow keys standing in for
     the buttons, for development without hardware.
 - A hardware abstraction layer so game code never talks to `RPi.GPIO` or
-  `rpi_ws281x` directly: **done**, see `hardware/interfaces.py` (the
-  `Matrix`/`KeyHandler`/`ScoreDisplay` contracts) with an `hardware/rpi/`
-  implementation and an `hardware/simulator/` implementation, picked by
-  `hardware/factory.py`.
+  `rpi_ws281x` directly: **done**, see `platforms/interfaces.py` (the
+  `Matrix`/`KeyHandler`/`ScoreDisplay` contracts) with a `platforms/rpi/`
+  implementation and a `platforms/simulator/` implementation, picked by
+  `platforms/factory.py`.
 - A game abstraction so `main.py` can run any game (Tetris, Snake, Pong, ...)
   through a common contract, rather than being hardwired to Tetris like it
   is today: **done** — see `STATUS.md` and `GAME_TEMPLATE.md`; the `Game`
@@ -60,7 +60,7 @@ description below.
 - `games/logo.py` — `load_logo()`: the only place that imports `Pillow`;
   decodes a game's `logo.png` into the pixel grid the menu draws.
 - `games/tetris/board.py` — Tetris rules/state (`Board`, `Block`); imports
-  the shared `Key` enum from `hardware/interfaces.py`.
+  the shared `Key` enum from `platforms/interfaces.py`.
 - `games/tetris/drawer.py` — draws the Tetris board onto a `Matrix` given
   to it (doesn't create one itself); Tetris-specific layout constants live
   here (`BOARD_POS_0`, etc.).
@@ -70,16 +70,16 @@ description below.
   (`board.py`/`drawer.py`/`__init__.py`). Its run boost (hold `Key.P2_UP`,
   "W" in `sim`) is the first thing to use `KeyHandler.is_pressed()` for
   continuous hold state rather than `get_key()`'s one-shot clicks.
-- `hardware/interfaces.py` — hardware-agnostic contracts: `Matrix`,
+- `platforms/interfaces.py` — hardware-agnostic contracts: `Matrix`,
   `KeyHandler` (`get_key`/`flush`/`pump`/`is_pressed`), `ScoreDisplay`
   (ABCs) and the shared `Key` enum.
-- `hardware/canvas.py` — `Canvas`: hardware-agnostic drawing surface used by
+- `platforms/canvas.py` — `Canvas`: hardware-agnostic drawing surface used by
   both `games/tetris/drawer.py` and `games/menu/`, works against any
   `Matrix` implementation.
-- `hardware/factory.py` — `create_matrix`/`create_key_handler`/
+- `platforms/factory.py` — `create_matrix`/`create_key_handler`/
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
-- `hardware/rpi/` — real-hardware backend:
+- `platforms/rpi/` — real-hardware backend:
   - `leds.py` — `DualMatrix`: driver for two 8x32 WS281x panels wired
     together as one matrix. Imports `rpi_ws281x` at module scope (RPi-only).
   - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)
@@ -88,7 +88,7 @@ description below.
     (RPi-only).
   - `score.py` — `SerialScoreDisplay`: optional serial link to an external
     ESP32 score display (`/dev/ttyUSB0`). Imports `pyserial`.
-- `hardware/simulator/` — tkinter-based backend, no extra deps beyond the
+- `platforms/simulator/` — tkinter-based backend, no extra deps beyond the
   standard library:
   - `window.py` — `SimulatorWindow`/`get_window()`: the single shared `Tk`
     root/canvas the matrix, keys and score backends below draw into.

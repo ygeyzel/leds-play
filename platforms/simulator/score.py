@@ -1,6 +1,6 @@
-from hardware.interfaces import ScoreDisplay
-from hardware.simulator.seven_segment import SevenSegmentDisplay
-from hardware.simulator.window import get_window
+from platforms.interfaces import ScoreDisplay
+from platforms.simulator.seven_segment import SevenSegmentDisplay
+from platforms.simulator.window import get_window
 
 
 class SimulatorScoreDisplay(ScoreDisplay):
