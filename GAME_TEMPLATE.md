@@ -1,12 +1,12 @@
 # Game Template Plan
 
 This is the agreed design for what a "game" is in the multi-game platform:
-the shared contract every game (Tetris, Snake, Pong, ...) implements, and
-the files/assets each one ships alongside its code.
+the shared contract every game (Tetris, Snake, Pong, Flappy Bird, ...)
+implements, and the files/assets each one ships alongside its code.
 
 The `Game` contract, Tetris's migration behind it, the menu, Snake (the
-second game) and Pong (the third, and first 2-player game) are all done.
-Audio is still just a plan (see "Still open").
+second game), Pong (the third, and first 2-player game) and Flappy Bird
+(the fourth) are all done. Audio is still just a plan (see "Still open").
 
 ## Decisions already made
 
@@ -60,6 +60,12 @@ games/
     drawer.py            # white border box, two cyan paddles, a white ball
     logo.png             # pixel art, 12x12, two paddles and a ball
     # no .best_score - see "Pong" below, nothing is ever saved to disk
+  flappy/
+    __init__.py        # FlappyGame(Game) - the fourth game
+    board.py            # bird physics/pipe scroll-and-collision logic
+    drawer.py            # white border box, green pipes, a yellow bird
+    logo.png             # pixel art, 12x12, a yellow bird
+    .best_score          # gitignored, created on first run
 tools/
   logo_editor.py       # standalone tkinter logo.png/logo_small.png painter
   font_editor.py        # standalone tkinter games/menu/font.py glyph painter
@@ -304,6 +310,27 @@ of a single-player high score:
   game.best_score)` call then shows the left paddle's score on the bottom
   7-segment row and the right paddle's on the top row, live, with no
   changes needed to `main.py` or the `Game` base class.
+
+## Flappy Bird (`games/flappy/`)
+
+The fourth game, and the first single-key one - `USED_KEYS = {Key.UP}`:
+
+- **Board**: a 20x34 court. `Key.UP` sets the bird's vertical velocity
+  upward instantly (not additive - a responsive, classic-feel flap, same
+  idea as the original), and gravity accelerates it back down every turn
+  otherwise, capped at a max fall speed. Pipes (a `deque` of fixed-width
+  columns with a randomly-positioned gap) scroll one cell left per turn;
+  the oldest is dropped once fully off-screen and a new one spawns at a
+  fixed spacing. Touching a pipe (bird's row outside that column's gap),
+  the ceiling, or the ground ends the round; passing a pipe's trailing
+  edge scores a point.
+- **Drawing**: the same full white border box as Snake/Pong, green pipe
+  columns (skipping their gap rows), a yellow bird. On game over the bird
+  blinks (flips 180 degrees around the hue wheel), same idea as the other
+  games' board blink.
+- **Best score**: unlike Pong, this is an ordinary single-player game, so
+  it uses `Game`'s default file-backed `best_score`/`_update_best_score()`
+  behavior unchanged - no override needed.
 
 ## Still open: Audio
 

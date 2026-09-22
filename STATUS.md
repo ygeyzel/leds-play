@@ -399,6 +399,33 @@ just a plan).
     win score; restarted with an arrow key and confirmed paddles/ball/
     scores/colors all reset; confirmed no `.best_score` file ever appears
     under `games/pong/`.
+- **Implemented Flappy Bird** (`games/flappy/`) as the fourth game, and the
+  first single-key one (`USED_KEYS = {Key.UP}`):
+  - `board.py` - a 20x34 court. `Key.UP` sets the bird's vertical velocity
+    upward instantly (a responsive, classic flap feel, not additive), and
+    gravity accelerates it back down every other turn, capped at a max
+    fall speed. Pipes are a `deque` of fixed-width columns with a
+    randomly-positioned gap, scrolling one cell left per turn; the oldest
+    is dropped once fully off-screen and a new one spawns at a fixed
+    spacing. Touching a pipe outside its gap, the ceiling, or the ground
+    ends the round; clearing a pipe's trailing edge scores a point.
+  - `drawer.py` - same full white border box as Snake/Pong, green pipe
+    columns (skipping their gap rows), a yellow bird; the bird blinks
+    (180-degree hue flip) on game over, same idea as the other games.
+  - Ordinary single-player best score: unlike Pong, this uses `Game`'s
+    default file-backed `best_score`/`_update_best_score()` unchanged.
+  - Real logo art: `games/flappy/logo.png`, a yellow bird with a black eye
+    and orange beak on a 12x12 grid, same simple-block style as the rest.
+  - Registered in `games/registry.py` (`GAMES = [TetrisGame, SnakeGame,
+    PongGame, FlappyGame]`).
+  - Verified in `sim`: launched directly (`--start-game "Flappy Bird"`)
+    and confirmed the bird/pipe/border render correctly and only `Key.UP`
+    shows active; a single flap followed by inactivity let gravity carry
+    the bird into the ground and correctly end the round (blink, score
+    frozen); repeated flapping sustained flight past multiple pipes with
+    live-incrementing score and multiple pipes coexisting on screen
+    correctly; confirmed `best_score` persists to `.best_score` (unlike
+    Pong) and is read back on a later launch.
 
 ## In progress
 
@@ -421,11 +448,11 @@ Roughly in the order they'll likely need to happen:
    - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
      Tetris layout constants (unaffected by the bigger matrix — Tetris just
      gets extra unused columns to the right for now).
-   - Neither Tetris, Snake, nor Pong render anything into the banner (the
-     menu does; all three just leave it blank while playing).
-3. **More games**: Tetris, Snake and Pong are done - see `GAME_TEMPLATE.md`
-   for the per-game contract new ones follow. No specific next game is
-   planned yet.
+   - None of the four games render anything into the banner (the menu
+     does; all of them just leave it blank while playing).
+3. **More games**: Tetris, Snake, Pong and Flappy Bird are done - see
+   `GAME_TEMPLATE.md` for the per-game contract new ones follow. No
+   specific next game is planned yet.
 
 ## Open questions for the user
 
