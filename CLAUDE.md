@@ -125,3 +125,11 @@ Real Pi audio hardware and per-game audio assets haven't been built yet
 - Before committing any Python changes, run `ruff check` on them. If
   `ruff` isn't installed/on `PATH`, ask the user to install it rather than
   installing it yourself or skipping the check.
+- Run Python in this repo through `uv run` (e.g. `uv run main.py --mode sim`,
+  `uv run tools/logo_editor.py`) so it uses the project `.venv`, which has
+  `Pillow`. The system `python3` doesn't.
+- If `.venv` ever has to be rebuilt, pin it to a system interpreter:
+  `uv sync --python ~/.pyenv/versions/3.13.5/bin/python3
+  --python-preference only-system`. A plain `uv sync` pulls in uv's own
+  CPython build, whose Tcl/Tk aborts on any tkinter window (`[xcb] Unknown
+  sequence number ... Aborting`), which breaks `sim` mode and the logo editor.
