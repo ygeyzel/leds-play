@@ -1,7 +1,6 @@
 from functools import reduce
 from typing import NewType, Sequence, Tuple
 
-
 BOARD_DIMS = (20, 10)
 
 Position = NewType('Position', Tuple[int, int])

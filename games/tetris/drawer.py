@@ -2,10 +2,9 @@ from itertools import product
 from time import sleep
 from typing import Optional
 
+from common.common import BOARD_DIMS, add_positions
 from games.tetris.board import Board
-from common.common import add_positions, BOARD_DIMS
 from hardware.interfaces import Matrix
-
 
 BOARD_POS_0 = (8, 2)
 

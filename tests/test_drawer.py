@@ -1,11 +1,10 @@
 from time import sleep
 from unittest.mock import Mock
 
-from tests.shared import matrix_test
+from games.tetris.board import BLOCK_SHAPES, Block, Direction
 from games.tetris.drawer import Drawer
-from games.tetris.board import Block, BLOCK_SHAPES, Direction
 from hardware.rpi.leds import DualMatrix
-
+from tests.shared import matrix_test
 
 board_pos_0 = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

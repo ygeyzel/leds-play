@@ -1,6 +1,6 @@
 from rpi_ws281x import Color, PixelStrip
 
-from common.common import Position, HsvColor, hsv_to_rgb, is_position_out_of_range
+from common.common import HsvColor, Position, hsv_to_rgb, is_position_out_of_range
 from hardware.interfaces import Matrix
 
 

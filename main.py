@@ -7,7 +7,6 @@ from games.registry import GAMES
 from hardware.factory import create_banner_matrix, create_key_handler, create_matrix, create_score_display
 from hardware.interfaces import Key, KeyHandler
 
-
 # Physical rig layout: shared by the menu and every game, so it's owned
 # here rather than by any one game (see games/tetris/drawer.py, which used
 # to build these itself back when it was the only thing running).

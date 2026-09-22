@@ -18,3 +18,12 @@ rpi = [
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 135
+
+[tool.ruff.lint]
+# Pyflakes + pycodestyle errors + import sorting. Deliberately narrower than
+# ruff's defaults, which flag the py3.9-era typing style this code is written
+# in (see requires-python above).
+select = ["E", "F", "I"]

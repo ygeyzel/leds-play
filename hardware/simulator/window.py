@@ -3,7 +3,6 @@ from typing import Optional
 
 from common.common import Position
 
-
 CELL_SIZE = 18
 CELL_GAP = 2
 

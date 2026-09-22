@@ -2,7 +2,6 @@ from RPi import GPIO
 
 from hardware.interfaces import Key, KeyHandler
 
-
 GPIO.setmode(GPIO.BCM)
 
 _KEY_PINS = {

@@ -3,7 +3,6 @@ from random import randint
 
 from hardware.interfaces import Key
 
-
 COURT_DIMS = (20, 34)  # rows, cols - the playable area, excluding the border
 BIRD_COL = 5
 

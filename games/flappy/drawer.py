@@ -2,10 +2,15 @@ from typing import Optional
 
 from common.common import add_positions
 from games.flappy.board import (
-    BIRD_COL, BIRD_COLOR_HSV, BORDER_COLOR_HSV, Board, PIPE_COLOR_HSV, PIPE_GAP_SIZE, PIPE_WIDTH,
+    BIRD_COL,
+    BIRD_COLOR_HSV,
+    BORDER_COLOR_HSV,
+    PIPE_COLOR_HSV,
+    PIPE_GAP_SIZE,
+    PIPE_WIDTH,
+    Board,
 )
 from hardware.interfaces import Matrix
-
 
 BOARD_POS_0 = (6, 3)
 
