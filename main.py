@@ -72,18 +72,30 @@ def _sleep(seconds: float, key_handler: KeyHandler):
     """Sleep in small slices, pumping the key handler between them so a
     backend that needs to service a GUI event loop (the simulator) stays
     responsive instead of freezing for the whole turn. While Key.PAUSE is
-    toggled on, the deadline is pushed forward instead of counting down -
-    the turn clock halts, but keys (including PAUSE itself, to unpause)
-    keep being read every pump."""
+    toggled on, the deadline is left untouched instead of counting down -
+    the turn clock halts exactly, with no drift, but keys (including
+    PAUSE itself, to unpause) keep being read every pump.
+
+    The deadline must never be nudged forward by a fixed PUMP_INTERVAL
+    per paused iteration (an earlier version did this): pump() itself
+    takes some non-zero time on top of that sleep, so each iteration's
+    real elapsed time is PUMP_INTERVAL-plus-pump()'s-own-cost - nudging
+    the deadline by only PUMP_INTERVAL each time silently drains the
+    remaining budget by that uncounted cost every iteration, eventually
+    letting a turn slip through despite still being paused. Leaving the
+    deadline alone entirely while paused has no such drift: whatever
+    remains gets picked back up, unchanged, the moment it's unpaused."""
 
     deadline = time() + seconds
-    while (remaining := deadline - time()) > 0:
+    while True:
         key_handler.pump()
         if key_handler.is_toggled(Key.PAUSE):
-            deadline += PUMP_INTERVAL
             sleep(PUMP_INTERVAL)
-        else:
-            sleep(min(PUMP_INTERVAL, remaining))
+            continue
+        remaining = deadline - time()
+        if remaining <= 0:
+            return
+        sleep(min(PUMP_INTERVAL, remaining))
 
 
 def game_loop(score_display, game: Game, key_handler: KeyHandler) -> bool:

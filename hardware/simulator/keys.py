@@ -7,13 +7,18 @@ _KEYSYM_TO_KEY = {
     "Down": Key.DOWN,
     "Left": Key.LEFT,
     "Right": Key.RIGHT,
-    "w": Key.P2_UP, "W": Key.P2_UP,
-    "s": Key.P2_DOWN, "S": Key.P2_DOWN,
-    "a": Key.P2_LEFT, "A": Key.P2_LEFT,
-    "d": Key.P2_RIGHT, "D": Key.P2_RIGHT,
+    # WASD/P/M also list the keysyms an active non-Latin keyboard *group*
+    # (e.g. a dual us/il layout switched to Hebrew) produces for the same
+    # physical keys, so a press isn't silently dropped just because the
+    # wrong group happens to be active - Right/Left/Return etc. don't need
+    # this since arrow/control keysyms are the same in every group.
+    "w": Key.P2_UP, "W": Key.P2_UP, "apostrophe": Key.P2_UP,
+    "s": Key.P2_DOWN, "S": Key.P2_DOWN, "hebrew_dalet": Key.P2_DOWN,
+    "a": Key.P2_LEFT, "A": Key.P2_LEFT, "hebrew_shin": Key.P2_LEFT,
+    "d": Key.P2_RIGHT, "D": Key.P2_RIGHT, "hebrew_gimel": Key.P2_RIGHT,
     "Return": Key.ENTER,
-    "p": Key.PAUSE, "P": Key.PAUSE,
-    "m": Key.MUTE, "M": Key.MUTE,
+    "p": Key.PAUSE, "P": Key.PAUSE, "hebrew_pe": Key.PAUSE,
+    "m": Key.MUTE, "M": Key.MUTE, "hebrew_zade": Key.MUTE,
 }
 
 # (col, row) in a 3x3 D-pad grid
