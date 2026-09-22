@@ -6,7 +6,7 @@ from games.base import Game, default_score_file, read_best_score
 from games.logo import load_logo
 from games.menu.font import FONT_HEIGHT, text_shape
 from games.registry import GAMES
-from hardware.interfaces import Key, Matrix
+from platforms.interfaces import AudioPlayer, Key, Matrix
 
 LOGO_SIZE = (12, 12)
 SMALL_LOGO_SIZE = (6, 6)
@@ -50,11 +50,13 @@ class MenuGame(Game):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
-        key_handler=None, games: Optional[List[type]] = None,
+        key_handler=None, audio_player: Optional[AudioPlayer] = None,
+        games: Optional[List[type]] = None,
         current_game_file: str = None, score_file: str = None,
     ):
-        # key_handler unused - the menu only needs get_key()'s one-shot
-        # clicks, accepted for the shared Game constructor convention.
+        # key_handler/audio_player unused - the menu only needs get_key()'s
+        # one-shot clicks and has no sound assets, both accepted for the
+        # shared Game constructor convention.
         self._matrix = matrix
         self._banner_matrix = banner_matrix
         self._games = games if games is not None else GAMES

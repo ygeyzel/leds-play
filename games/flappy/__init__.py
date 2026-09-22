@@ -4,7 +4,7 @@ from typing import Optional
 from games.base import Game
 from games.flappy.board import TURN_INTERVAL
 from games.flappy.drawer import Drawer
-from hardware.interfaces import Key, KeyHandler, Matrix
+from platforms.interfaces import AudioPlayer, Key, KeyHandler, Matrix
 
 
 class FlappyGame(Game):
@@ -14,8 +14,11 @@ class FlappyGame(Game):
 
     def __init__(
         self, matrix: Matrix, banner_matrix: Optional[Matrix] = None,
-        key_handler: Optional[KeyHandler] = None, score_file: str = None,
+        key_handler: Optional[KeyHandler] = None, audio_player: Optional[AudioPlayer] = None,
+        score_file: str = None,
     ):
+        # audio_player unused - Flappy Bird has no sound assets yet,
+        # accepted for the shared Game constructor convention.
         self._drawer = Drawer(matrix, banner_matrix)
         self._board = self._drawer.board
 

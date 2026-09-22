@@ -47,10 +47,15 @@ python main.py sim --start-game Snake
 **In any game**, ENTER returns to the menu (unless the game itself uses
 ENTER for something — none currently do). When a round ends, pressing an
 arrow key restarts that same game immediately with a fresh score; any
-other key goes back to the menu.
+other key goes back to the menu. `Key.PAUSE` (`P` in `sim`) toggles the
+turn clock on/off without stopping input; `Key.MUTE` (`M` in `sim`)
+toggles all audio on/off, resuming background music from the start on
+unmute.
 
 **Tetris** — D-pad 1 (arrow keys in `sim`): left/right to move, up to
-rotate, down to drop.
+rotate, down to drop. Has background music (looping while the round is
+active) and sound effects for a game over and for clearing 1-3 lines vs.
+clearing 4 at once.
 
 **Snake** — D-pad 1 (arrow keys in `sim`) to steer. Hold the run key
 (`Key.P2_UP`, `W` in `sim`) to move a bit faster for as long as it's held.
@@ -104,7 +109,9 @@ updated to match yet (still fixed at 2 panels / 4 buttons / no banner).
 
 - Python 3.
 - `sim` mode needs [Pillow](https://pypi.org/project/Pillow/) (for
-  decoding game logos) on top of the standard library (tkinter).
+  decoding game logos) and [pygame](https://pypi.org/project/pygame/)
+  (for background music/sound effects) on top of the standard library
+  (tkinter).
 - `rpi` mode additionally needs the `rpi` dependency group (Raspberry Pi
   only).
 
@@ -159,7 +166,7 @@ games/
   snake/               Snake: rules/state, rendering, logo
   pong/                Pong: 2-player rules/state, rendering, logo
   flappy/              Flappy Bird: rules/state, rendering, logo
-hardware/
+platforms/
   interfaces.py       Matrix / KeyHandler / ScoreDisplay contracts, shared Key enum
   canvas.py            hardware-agnostic drawing surface used by game drawers
   factory.py           picks the rpi or simulator backend for a given mode
