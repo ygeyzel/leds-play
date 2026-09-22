@@ -6,12 +6,13 @@ for developing and testing games without the hardware.
 
 This project is the successor to [`TetLED`](https://github.com/ygeyzel/tetled), a Tetris-only version of the
 same idea. `LEDs Play` generalizes it into a real game platform: a
-game-selection menu, Tetris and Snake to pick from, and room to add more.
+game-selection menu, Tetris, Snake and Pong to pick from, and room to add
+more.
 
-> **Status:** the game abstraction has landed — there's a menu, and two
-> games (Tetris, Snake) behind it. See [`STATUS.md`](STATUS.md) for the
-> full history and what's planned next (audio, more games, bringing `rpi`
-> mode up to parity with `sim`).
+> **Status:** the game abstraction has landed — there's a menu, and three
+> games (Tetris, Snake, Pong) behind it. See [`STATUS.md`](STATUS.md) for
+> the full history and what's planned next (audio, more games, bringing
+> `rpi` mode up to parity with `sim`).
 
 ## Modes
 
@@ -56,6 +57,13 @@ rotate, down to drop.
 Eating the apple scores points and grows the snake; hitting a wall or its
 own body ends the round.
 
+**Pong** — 2 players, sharing the board: the left paddle moves with
+`Key.P2_UP`/`Key.P2_DOWN` (`W`/`S` in `sim`), the right paddle with
+`Key.UP`/`Key.DOWN` (arrow keys in `sim`), both read continuously so
+either can move at any time. Missing the ball scores the other side a
+point (shown live on both 7-segment rows - Pong has no single-player high
+score, so nothing is ever saved to disk); first to 7 ends the round.
+
 ## Hardware (current)
 
 - Two 8x32 WS281x LED panels wired together as one 16x32 matrix.
@@ -77,10 +85,11 @@ updated to match yet (still fixed at 2 panels / 4 buttons / no banner).
   themselves don't render into it yet.
 - **Buttons**: two D-pads (up/down/left/right each) plus an Enter button,
   9 inputs in total:
-  - D-pad 1 (original 4): arrow keys in `sim`. Used by the menu and every
-    game for movement/selection.
-  - D-pad 2 (`Key.P2_*`): `W`/`A`/`S`/`D` in `sim`. `W` is Snake's run key;
-    the rest are reserved for a future 2nd player/game.
+  - D-pad 1 (original 4): arrow keys in `sim`. Used by the menu, Snake, and
+    as Pong's right paddle.
+  - D-pad 2 (`Key.P2_*`): `W`/`A`/`S`/`D` in `sim`. `W` is Snake's run key
+    and Pong's left paddle up; `S` is Pong's left paddle down. `A`/`D` are
+    reserved for a future 2nd player/game.
   - Enter (`Key.ENTER`): `Enter`/`Return` in `sim`. Launches a game from
     the menu, or returns to the menu from within a game.
 
@@ -143,6 +152,7 @@ games/
   menu/                the game-selection screen, itself a Game
   tetris/              Tetris: rules/state, rendering, logo
   snake/               Snake: rules/state, rendering, logo
+  pong/                Pong: 2-player rules/state, rendering, logo
 hardware/
   interfaces.py       Matrix / KeyHandler / ScoreDisplay contracts, shared Key enum
   canvas.py            hardware-agnostic drawing surface used by game drawers

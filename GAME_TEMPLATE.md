@@ -4,8 +4,9 @@ This is the agreed design for what a "game" is in the multi-game platform:
 the shared contract every game (Tetris, Snake, Pong, ...) implements, and
 the files/assets each one ships alongside its code.
 
-The `Game` contract, Tetris's migration behind it, the menu, and Snake (the
-second game) are all done. Audio is still just a plan (see "Still open").
+The `Game` contract, Tetris's migration behind it, the menu, Snake (the
+second game) and Pong (the third, and first 2-player game) are all done.
+Audio is still just a plan (see "Still open").
 
 ## Decisions already made
 
@@ -53,6 +54,12 @@ games/
     drawer.py            # white border box, green snake, red apple
     logo.png             # pixel art, 12x12, a blocky green "S"
     .best_score          # gitignored, created on first run
+  pong/
+    __init__.py        # PongGame(Game) - the third game, 2-player
+    board.py            # paddle/ball court logic
+    drawer.py            # white border box, two cyan paddles, a white ball
+    logo.png             # pixel art, 12x12, two paddles and a ball
+    # no .best_score - see "Pong" below, nothing is ever saved to disk
 tools/
   logo_editor.py       # standalone tkinter logo.png/logo_small.png painter
   font_editor.py        # standalone tkinter games/menu/font.py glyph painter
@@ -268,6 +275,35 @@ The second game, and the first to actually exercise `key_handler` and
   `turn_interval` from `NORMAL_TURN_INTERVAL` to the shorter
   `RUN_TURN_INTERVAL` for as long as it's held, via `is_pressed` (see
   above) - not a `USED_KEYS`/`get_key()` command.
+
+## Pong (`games/pong/`)
+
+The third game, and the first with two players sharing one round instead
+of a single-player high score:
+
+- **Board**: a 24x34 court, left paddle on `Key.P2_UP`/`Key.P2_DOWN`
+  ("W"/"S" in `sim`), right paddle on `Key.UP`/`Key.DOWN` (arrow keys).
+  Both paddles are read every turn via `is_pressed` (see above) rather
+  than `get_key()`, so `advance_turn`'s `key` argument goes unused and
+  both players can move within the same turn. The ball moves diagonally
+  one cell a turn, bounces off the top/bottom walls and off a paddle it
+  reaches while that paddle's 5-cell span covers its row; reaching either
+  edge without a paddle there scores the other side a point and re-serves
+  the ball from the center in a random diagonal direction. First to
+  `POINTS_TO_WIN` (7) ends the round.
+- **Drawing**: the same full white border box as Snake, two cyan paddles
+  flush against the inside of the left/right border, a white ball. On game
+  over both paddles blink (flip 180 degrees around the hue wheel), same
+  idea as Tetris/Snake's board blink.
+- **No persisted best score**: a 2-player live match has no single-player
+  high score to save, so `PongGame` overrides `best_score` as a read-only
+  property returning the right paddle's live score instead of the usual
+  file-backed value (same no-op-setter trick `MenuGame.best_score` uses) -
+  `_update_best_score()` is simply never called, so no `.best_score` file
+  is ever written. `main.py`'s existing `send_score(game.score,
+  game.best_score)` call then shows the left paddle's score on the bottom
+  7-segment row and the right paddle's on the top row, live, with no
+  changes needed to `main.py` or the `Game` base class.
 
 ## Still open: Audio
 
