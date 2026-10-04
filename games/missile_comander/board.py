@@ -320,10 +320,10 @@ class Board:
                      'city hp', 'splinter shot', 'dubel score']
         # exta cannon need to be orenge!!!
         self.aid_packges.append(
-            AidPackage(pos=[1, randrange(1, 40)], matrix=[[1]], aid_type='splinter shot')
+            AidPackage(pos=[1, randrange(1, 40)], matrix=[[1]], aid_type='dubel score')
         )
         self.aid_packges.append(
-            AidPackage(pos=[1, randrange(1, 40)], matrix=[[1]], aid_type='extra canon')
+            AidPackage(pos=[1, randrange(1, 40)], matrix=[[1]], aid_type='dubel score')
         )
         
 
