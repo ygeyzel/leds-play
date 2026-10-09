@@ -47,9 +47,10 @@ just a plan).
   - `keys.py` (`SimulatorKeyHandler`) — keyboard arrow keys mapped to
     up/down/left/right, with an on-screen D-pad that highlights whichever
     key is currently pressed.
-  - `score.py` (`SimulatorScoreDisplay`) + `seven_segment.py` — score
-    (bottom) and high score (top) drawn as 7-segment-style digits to the
-    right of the matrix, no text.
+  - `score.py` (`SimulatorScoreDisplay`) + `led_board.py` — score
+    (bottom) and high score (top) drawn on two small 8x32 LED boards (3x7
+    font, 8 digits each, like the ESP32 firmware) to the right of the
+    matrix, no text.
   - `window.py` — the single shared `Tk` window/canvas the three backends
     above draw into.
 - **Mode switch**: `python main.py [rpi|sim]` (defaults to `rpi`), wired via

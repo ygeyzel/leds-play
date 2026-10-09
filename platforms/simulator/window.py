@@ -11,9 +11,15 @@ BG_COLOR = "#101010"
 PANEL_PADDING = 24
 SIDE_PANEL_WIDTH = 430
 
-DIGIT_WIDTH = 26
-DIGIT_HEIGHT = 46
-DIGIT_ROW_GAP = 24
+# The two 8x32 score boards (high score, score): same pixel grid as the ESP32
+# boards, drawn with much smaller pixels than the game matrix.
+SCORE_CELL_SIZE = 8
+SCORE_CELL_GAP = 1
+SCORE_BOARD_ROWS = 8
+SCORE_BOARD_COLS = 32
+SCORE_BOARD_WIDTH = SCORE_BOARD_COLS * SCORE_CELL_SIZE
+SCORE_BOARD_HEIGHT = SCORE_BOARD_ROWS * SCORE_CELL_SIZE
+SCORE_BOARD_ROW_GAP = 24
 
 BUTTONS_TOP_GAP = 100
 BUTTON_LEFT_GAP = 60
@@ -45,7 +51,7 @@ class SimulatorWindow:
             banner_width = banner_height = banner_gap = 0
 
         content_height = (
-            DIGIT_HEIGHT * 2 + DIGIT_ROW_GAP
+            SCORE_BOARD_HEIGHT * 2 + SCORE_BOARD_ROW_GAP
             + BUTTONS_TOP_GAP + LABEL_HEADROOM + DPAD_BLOCK_HEIGHT
             + BUTTONS_TOP_GAP + LABEL_HEADROOM + ENTER_BLOCK_HEIGHT
         )
@@ -55,9 +61,9 @@ class SimulatorWindow:
         side_x = max(matrix_width, banner_width) + PANEL_PADDING
 
         self.high_score_origin = (side_x, 24)
-        self.score_origin = (side_x, 24 + DIGIT_HEIGHT + DIGIT_ROW_GAP)
+        self.score_origin = (side_x, 24 + SCORE_BOARD_HEIGHT + SCORE_BOARD_ROW_GAP)
 
-        buttons_y = 24 + DIGIT_HEIGHT * 2 + DIGIT_ROW_GAP + BUTTONS_TOP_GAP + LABEL_HEADROOM
+        buttons_y = 24 + SCORE_BOARD_HEIGHT * 2 + SCORE_BOARD_ROW_GAP + BUTTONS_TOP_GAP + LABEL_HEADROOM
         self.buttons_origin = (side_x + BUTTON_LEFT_GAP, buttons_y)
 
         # 2nd D-pad sits right next to the 1st, same row.

@@ -95,8 +95,9 @@ description below.
   - `leds.py` — `SimulatorMatrix`: pixel-for-pixel stand-in for `DualMatrix`.
   - `keys.py` — `SimulatorKeyHandler`: arrow keys -> `Key`, plus an on-screen
     D-pad that highlights the currently-pressed key.
-  - `score.py` + `seven_segment.py` — `SimulatorScoreDisplay`: score/high
-    score as 7-segment-style digits to the right of the matrix.
+  - `score.py` + `led_board.py` — `SimulatorScoreDisplay`: score/high
+    score on two small 8x32 LED boards (3x7 font, like the ESP32 firmware)
+    to the right of the matrix.
 - `common/common.py` — shared `Position`/`HsvColor`/`RgbColor` types,
   `BOARD_DIMS`, `hsv_to_rgb`, `is_position_out_of_range`.
 - `tests/` — **not automated pytest**. These are manual/interactive checks
