@@ -4,12 +4,18 @@ from common.common import Position
 from platforms.interfaces import AudioPlayer, KeyHandler, Matrix, ScoreDisplay
 
 
+
 def create_matrix(
     mode: str, din_pin: int, matrix_max_x: int, matrix_max_y: int,
     num_of_matrices: int = 2, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
     if mode == "rpi":
-        from platforms.rpi.leds import DualMatrix
+        try:
+            from platforms.rpi.leds import DualMatrix
+        except Exception as e:
+            e.add_note('\nif tried to play as sim and not as rpi\nuse sim flag')
+            raise e
+        
         if num_of_matrices != 2:
             print(
                 f"warning: rpi backend doesn't support --num-of-matrices yet "
