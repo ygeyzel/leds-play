@@ -52,6 +52,7 @@ class MissileCommandGame(Game):
         return TURN_INTERVAL
 
     def advance_turn(self, key: Key):
+        self._update_best_score()
         if self._key_handler is not None:
             self._board.advance_turn(self._key_handler)
 
@@ -63,4 +64,6 @@ class MissileCommandGame(Game):
         self._drawer.draw_board()
 
     def on_game_over_tick(self):
-        self._drawer.blink_board()
+        self._board.start()
+
+        # no function drawer.blink_board, need to reaset the game some other way or implement!
