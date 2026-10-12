@@ -33,19 +33,12 @@ class MissileCommandGame(Game):
 
     def start(self):
         self._board.start()
+        self._drawer.draw_board()
 
     @property
     def score(self) -> int:
         """The left paddle's (W/S) live score."""
         return self._board.score
-
-    @property
-    def best_score(self) -> int:
-        return self._board.high_score
-
-    @best_score.setter
-    def best_score(self, value):
-        pass  # Game.__init__ assigns this; Pong's is always derived, see the getter
 
     @property
     def turn_interval(self) -> float:
