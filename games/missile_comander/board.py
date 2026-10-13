@@ -1,6 +1,6 @@
 from random import randrange, choice
 from copy import deepcopy
-from collections import deque
+from collections import deque, namedtuple
 
 from games.missile_comander.colors import HSVColor, HSVNeutral
 
@@ -10,6 +10,7 @@ from platforms.interfaces import Key, KeyHandler
 TURN_INTERVAL = 0.08
 
 SHIP_COLOR_HSV = HSVColor.BLUE.value
+SHIP2_COLOR_HSV = HSVColor.MAGENTA.value
 METEOR_COLOR_HSV = HSVColor.RED.value
 BORDER_COLOR_HSV = HSVColor.AZURE.with_sv(0.7, 0.6)
 CITY_COLOR_HSV = HSVNeutral.WHITE.value
@@ -119,18 +120,28 @@ AID_TYPES_BY_SCORE = [
 # Timed aid effects, in seconds of play (converted to turns with
 # TURN_INTERVAL). Picking one up again while active refreshes its timer.
 EFFECT_SECONDS = {
-    'dubel score': 60,
+    'dubel score': 20,
     'extra canon': 30,
     'slawer meteors': 30,
 }
 SCORE_MULTIPLIER = 2
 
 
-# Both paddles move continuously while held (KeyHandler.is_pressed(), like
-# Snake's run boost) rather than one-shot per get_key() click, so both
-# players can move in the same turn.
-_LEFT_KEYS = {Key.P2_UP: -1, Key.P2_DOWN: 1}
-_RIGHT_KEYS = {Key.UP: -1, Key.DOWN: 1}
+# --- Ships ------------------------------------------------------------------
+# Keys are read continuously while held (KeyHandler.is_pressed()), so both
+# players can move and fire in the same turn. One ShipSetup per ship: this
+# table is the only place that says which keys, color and start column a
+# ship has.
+ShipControls = namedtuple('ShipControls', ['left', 'right', 'fire'])
+ShipSetup = namedtuple('ShipSetup', ['controls', 'color', 'column'])
+
+SHIP_ROW = 29
+SHIP_SETUPS = [
+    # player 1: arrow keys, fires with UP
+    ShipSetup(ShipControls(Key.LEFT, Key.RIGHT, Key.UP), SHIP_COLOR_HSV, 29),
+    # player 2: W A S D, fires with W (S is not used yet)
+    ShipSetup(ShipControls(Key.P2_LEFT, Key.P2_RIGHT, Key.P2_UP), SHIP2_COLOR_HSV, 9),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -204,16 +215,31 @@ class City(GameObject):
 
 
 class Ship(GameObject):
-    def __init__(self, pos, matrix, level=1, splinter_level=0):
+    def __init__(self, pos, matrix, controls, color, level=1, splinter_level=0,
+                 max_shot=START_MAX_SHOT):
         super().__init__(pos, matrix)
+        self.controls = controls
+        self.color = color
         self.level = level
         self.splinter_level = splinter_level
+        self.max_shot = max_shot
+
+    @property
+    def shot_limit(self):
+        """Max of this ship's shots allowed on screen at once: `max_shot`
+        volleys, where one volley fires one shot per cannon per splinter
+        direction. Derived from the ship's current upgrades every time
+        it's read, so it can never drift out of sync with them."""
+        shots_per_volley = (len(SHOOTS_BY_LVL[self.level]) *
+                            len(SPLINTER_SHOT_DIRECTIONS[self.splinter_level]))
+        return self.max_shot * shots_per_volley
 
 
 class Shot(GameObject):
-    def __init__(self, pos, matrix, direction=(-1, 0)):
+    def __init__(self, pos, matrix, direction=(-1, 0), owner=None):
         super().__init__(pos, matrix)
         self.direction = direction  # (d_row, d_col); default is straight up
+        self.owner = owner          # the Ship that fired it
 
 
 class Meteor(GameObject):
@@ -282,6 +308,60 @@ class AidPackage(GameObject):
         super().__init__(pos, matrix)
         self.type = aid_type
         self.score = score  # score of the meteor that dropped it
+
+    @staticmethod
+    def type_for_score(score):
+        """The meteor's score picks the tier; the type is random inside it."""
+        tier_types = AID_TYPES_BY_SCORE[0][1]
+        for min_score, types in AID_TYPES_BY_SCORE:
+            if score >= min_score:
+                tier_types = types
+        return choice(tier_types)
+
+    @classmethod
+    def create(cls, score):
+        """A package that falls from a random column. Its type comes from
+        the score of the meteor that dropped it."""
+        # exta cannon need to be orenge!!!
+        return cls(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]],
+                   aid_type=cls.type_for_score(score), score=score)
+
+    def touches(self, other):
+        """True if any filled cell of this package overlaps `other`."""
+        return not self.filled_cells().isdisjoint(other.filled_cells())
+
+    def collect(self, board, ship):
+        """Applies this package's effect, then uses the package up (emptied,
+        so remove_dead_object clears it). Upgrades (extra shot, extra canon,
+        splinter shot) go to the `ship` that caught it; the rest (slower
+        meteors, city hp, double score) affect the whole game."""
+        match self.type:
+            case 'extra shot':
+                ship.max_shot += 1
+
+            case 'slawer meteors':
+                if not board.is_effect_active('slawer meteors'):
+                    board.meteors_turn_frame.append(False)
+                board.start_effect('slawer meteors')
+
+            case 'city hp':
+                random_city = randrange(len(board.cities))
+                board.cities[random_city].matrix = deepcopy(base_city_matrix)
+
+            case 'extra canon':
+                board.set_ship_level(ship, ship.level + 1)
+                board.start_effect('extra canon', ship)
+
+            case 'splinter shot':
+                if ship.splinter_level < MAX_SPLINTER_LEVEL:
+                    ship.splinter_level += 1
+
+            case 'dubel score':
+                # no permanent change: Board.score_multiplier doubles the
+                # points of each kill while this effect is active
+                board.start_effect('dubel score')
+
+        self.matrix = [[0]]
 
 
 # ---------------------------------------------------------------------------
@@ -406,15 +486,14 @@ class Board:
         self.score = 0
         self.turns_elapsed = 0
         self.cities = []
-        self.ship = None
+        self.ships = []
         self.shots = []
         self.meteors = []
         self.aid_packges = []
         self.game_over = False
         self.METEORS_CUONTER = 5
-        self.max_shot = START_MAX_SHOT
         self.meteors_turn_frame = deque([True, False, False, False, False, False])
-        self.active_effects = {}        # effect name -> turns left
+        self.active_effects = {}        # (effect name, ship or None) -> turns left
         self.aid_drop_thresholds = []   # scores at which a package drops
         self._aid_planned_level = 0     # highest game level already planned
 
@@ -426,22 +505,12 @@ class Board:
     def score_multiplier(self):
         """Applies only to the points added to the total score, not to the
         meteor's own score (which still decides the package type)."""
-        return SCORE_MULTIPLIER if 'dubel score' in self.active_effects else 1
-
-    @property
-    def rel_max_shot(self):
-        """Max shots allowed on screen at once: `max_shot` volleys, where
-        one volley fires one shot per cannon per splinter direction.
-        Derived from the ship's current upgrades every time it's read, so
-        it can never drift out of sync with them."""
-        shots_per_volley = (len(SHOOTS_BY_LVL[self.ship.level]) *
-                            len(SPLINTER_SHOT_DIRECTIONS[self.ship.splinter_level]))
-        return self.max_shot * shots_per_volley
+        return SCORE_MULTIPLIER if self.is_effect_active('dubel score') else 1
 
     def start(self):
         self._reset_state()
         self.create_cities()
-        self.create_ship()
+        self.create_ships()
 
     def create_cities(self):
         for i in range(6):
@@ -451,42 +520,32 @@ class Board:
             matrix = deepcopy(base_city_matrix)
             self.cities.append(City(pos=(25, 1 + (6 * i) + mod), matrix=matrix))
 
-    def create_ship(self):
-        self.ship = Ship(pos=[29, 18], matrix=deepcopy(SHIP_MATRIX), level=1)
+    def create_ships(self):
+        for setup in SHIP_SETUPS:
+            self.ships.append(Ship(pos=[SHIP_ROW, setup.column],
+                                   matrix=deepcopy(SHIP_MATRIX),
+                                   controls=setup.controls,
+                                   color=setup.color))
 
-    def _add_shot(self):
-        if len(self.shots) < self.rel_max_shot:
-            self.shots += self._create_shot()
+    def _add_shot(self, ship):
+        own_shots = sum(1 for shot in self.shots if shot.owner is ship)
+        if own_shots < ship.shot_limit:
+            self.shots += self._create_shot(ship)
 
-    def _create_shot(self):
+    def _create_shot(self, ship):
         shots = []
-        ship_pos_x, ship_pos_y = self.ship.pos
-        directions = SPLINTER_SHOT_DIRECTIONS[self.ship.splinter_level]
+        ship_pos_x, ship_pos_y = ship.pos
+        directions = SPLINTER_SHOT_DIRECTIONS[ship.splinter_level]
 
-        for rel_pos in SHOOTS_BY_LVL[self.ship.level]:
+        for rel_pos in SHOOTS_BY_LVL[ship.level]:
             shot_origin = [ship_pos_x, ship_pos_y + rel_pos]
             for direction in directions:
                 shots.append(Shot(pos=shot_origin.copy(),
                                    matrix=deepcopy(BASE_SHOT_MATRIX),
-                                   direction=direction))
+                                   direction=direction,
+                                   owner=ship))
 
         return shots
-
-    def _create_aid_packge(self, score):
-        # exta cannon need to be orenge!!!
-        self.aid_packges.append(
-            AidPackage(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]],
-                       aid_type=self._aid_type_for_score(score), score=score)
-        )
-
-    @staticmethod
-    def _aid_type_for_score(score):
-        """The meteor's score picks the tier; the type is random inside it."""
-        tier_types = AID_TYPES_BY_SCORE[0][1]
-        for min_score, types in AID_TYPES_BY_SCORE:
-            if score >= min_score:
-                tier_types = types
-        return choice(tier_types)
 
     @staticmethod
     def _aid_quota(level):
@@ -555,18 +614,19 @@ class Board:
             budget -= cost
 
     def advence_player_input(self, key_handler):
-        if key_handler.is_pressed(Key.LEFT):
-            prospective_pos = [self.ship.pos[0], self.ship.pos[1] - 1]
-            if self.ship.is_on_edge(prospective_pos):
-                self.ship.pos[1] -= 1
+        for ship in self.ships:
+            if key_handler.is_pressed(ship.controls.left):
+                prospective_pos = [ship.pos[0], ship.pos[1] - 1]
+                if ship.is_on_edge(prospective_pos):
+                    ship.pos[1] -= 1
 
-        if key_handler.is_pressed(Key.RIGHT):
-            prospective_pos = [self.ship.pos[0], self.ship.pos[1] + 1]
-            if self.ship.is_on_edge(prospective_pos):
-                self.ship.pos[1] += 1
+            if key_handler.is_pressed(ship.controls.right):
+                prospective_pos = [ship.pos[0], ship.pos[1] + 1]
+                if ship.is_on_edge(prospective_pos):
+                    ship.pos[1] += 1
 
-        if key_handler.is_pressed(Key.UP):
-            self._add_shot()
+            if key_handler.is_pressed(ship.controls.fire):
+                self._add_shot(ship)
 
     def _advence_shots(self):
         for shot in self.shots:
@@ -609,72 +669,41 @@ class Board:
                     resolve_bomb_collision(meteor, city)
 
     def _aid_packges_ship_colide(self):
-        aid_packge_collide = []
         for aid_packge in self.aid_packges:
-            if _is_matrix_collide(aid_packge.filled_cells(), self.ship.filled_cells()):
-                if self.is_aid_collide(aid_packge, self.ship):
-                    aid_packge_collide.append(aid_packge)
+            for ship in self.ships:
+                if aid_packge.touches(ship):
+                    aid_packge.collect(self, ship)
+                    break  # a package can only be caught once
 
-        for aid_packge in aid_packge_collide:
-            self.aid_packge_proses(aid_packge.type)
-            aid_packge.matrix = [[0]]
-
-    @staticmethod
-    def is_aid_collide(aid_packge, ship):
-        aid_packge_filled = aid_packge.filled_cell_map()
-        ship_filled = ship.filled_cell_map()
-        collisions = list(aid_packge_filled.keys() & ship_filled.keys())
-        return bool(collisions)
-
-    def aid_packge_proses(self, aid_type):
-        match aid_type:
-            case 'extra shot':
-                self.max_shot += 1
-
-            case 'slawer meteors':
-                if 'slawer meteors' not in self.active_effects:
-                    self.meteors_turn_frame.append(False)
-                self._start_effect('slawer meteors')
-
-            case 'city hp':
-                random_city = randrange(6)
-                self.cities[random_city].matrix = deepcopy(base_city_matrix)
-
-            case 'extra canon':
-                self._set_ship_level(self.ship.level + 1)
-                self._start_effect('extra canon')
-
-            case 'splinter shot':
-                if self.ship.splinter_level < MAX_SPLINTER_LEVEL:
-                    self.ship.splinter_level += 1
-
-            case 'dubel score':
-                self._start_effect('dubel score')
-
-    def _set_ship_level(self, level):
-        self.ship.level = max(1, min(level, MAX_SHIP_LEVEL))
-        self.ship.matrix = deepcopy(SHIP_MATRIX_LIST[self.ship.level - 1])
+    def set_ship_level(self, ship, level):
+        ship.level = max(1, min(level, MAX_SHIP_LEVEL))
+        ship.matrix = deepcopy(SHIP_MATRIX_LIST[ship.level - 1])
         # a wider ship must not poke past the right edge
-        self.ship.pos[1] = min(self.ship.pos[1], BOARD_WIDTH - self.ship.width)
+        ship.pos[1] = min(ship.pos[1], BOARD_WIDTH - ship.width)
 
     @staticmethod
     def _seconds_to_turns(seconds):
         return round(seconds / TURN_INTERVAL)
 
-    def _start_effect(self, name):
-        self.active_effects[name] = self._seconds_to_turns(EFFECT_SECONDS[name])
+    def start_effect(self, name, ship=None):
+        """Starts (or refreshes) a timed effect. Pass the `ship` for effects
+        that belong to one ship; leave it out for game-wide effects."""
+        self.active_effects[(name, ship)] = self._seconds_to_turns(EFFECT_SECONDS[name])
+
+    def is_effect_active(self, name, ship=None):
+        return (name, ship) in self.active_effects
 
     def _tick_effects(self):
-        for name in list(self.active_effects):
-            self.active_effects[name] -= 1
-            if self.active_effects[name] <= 0:
-                del self.active_effects[name]
-                self._end_effect(name)
+        for key in list(self.active_effects):
+            self.active_effects[key] -= 1
+            if self.active_effects[key] <= 0:
+                del self.active_effects[key]
+                self._end_effect(*key)
 
-    def _end_effect(self, name):
+    def _end_effect(self, name, ship):
         match name:
             case 'extra canon':
-                self._set_ship_level(1)
+                self.set_ship_level(ship, 1)
             case 'slawer meteors':
                 self.meteors_turn_frame.remove(False)
             # 'dubel score' needs no cleanup: score_multiplier reads
@@ -694,4 +723,4 @@ class Board:
         self._plan_aid_drops()
         while self.aid_drop_thresholds and self.score >= self.aid_drop_thresholds[0]:
             self.aid_drop_thresholds.pop(0)
-            self._create_aid_packge(meteor.score)
+            self.aid_packges.append(AidPackage.create(meteor.score))

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from common.common import add_positions
-from games.missile_comander.board import Board, AID_COLOR_BY_TYPE, BORDER_COLOR_HSV, AID_PACKGES_HSV, CITY_COLOR_HSV, SHIP_COLOR_HSV, SHOT_COLOR_HSV, METEOR_COLOR_HSV
+from games.missile_comander.board import Board, AID_COLOR_BY_TYPE, BORDER_COLOR_HSV, AID_PACKGES_HSV, CITY_COLOR_HSV, SHIP_COLOR_HSV, SHIP2_COLOR_HSV, SHOT_COLOR_HSV, METEOR_COLOR_HSV
 from platforms.interfaces import Matrix
 
 
@@ -19,7 +19,7 @@ class Drawer:
 
         self.board = board
         self._city_color = CITY_COLOR_HSV
-        self._ship_color = SHIP_COLOR_HSV
+        self._ship_colors = [SHIP_COLOR_HSV, SHIP2_COLOR_HSV]
         self._shot_color = SHOT_COLOR_HSV
         self._meteor_color = METEOR_COLOR_HSV
         self._aid_packges_color = AID_PACKGES_HSV
@@ -27,7 +27,7 @@ class Drawer:
     def draw_board(self):
         self._board_canvas.draw_borders(BORDER_COLOR_HSV)
         self.draw_cities()
-        self.draw_ship()
+        self.draw_ships()
         self.draw_miteors()
         self.draw_shots()
         self.draw_aid_packges()
@@ -57,11 +57,12 @@ class Drawer:
             for pos in all_object_pos:
                 self._board_canvas[pos] = colors[game_object.type]
 
-    def draw_ship(self):
-        ship = self.board.ship
-        all_ship_pos = self.get_metrix_pos(ship)
-        for pos in all_ship_pos:
-            self._board_canvas[pos] = self._ship_color
+    def draw_ships(self):
+        ships = self.board.ships
+        for i, ship in enumerate(ships):
+            all_ship_pos = self.get_metrix_pos(ship)
+            for pos in all_ship_pos:
+                self._board_canvas[pos] = self._ship_colors[i]
 
     def draw_cities(self):
         self.draw_list(self.board.cities, self._city_color)
