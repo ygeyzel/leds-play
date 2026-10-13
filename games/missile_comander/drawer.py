@@ -1,11 +1,43 @@
 from typing import Optional
 
 from common.common import add_positions
-from games.missile_comander.board import Board, AID_COLOR_BY_TYPE, BORDER_COLOR_HSV, AID_PACKGES_HSV, CITY_COLOR_HSV, SHIP_COLOR_HSV, SHIP2_COLOR_HSV, SHOT_COLOR_HSV, METEOR_COLOR_HSV
+from games.missile_comander.board import Board
+from games.missile_comander.colors import HSVColor, HSVNeutral
+
 from platforms.interfaces import Matrix
 
 
 BOARD_POS_0 = (0, 0)
+
+
+
+
+
+SHIP_COLOR_HSV = HSVColor.BLUE.value
+SHIP2_COLOR_HSV = HSVColor.MAGENTA.value
+METEOR_COLOR_HSV = HSVColor.RED.value
+BORDER_COLOR_HSV = HSVColor.AZURE.with_sv(0.7, 0.6)
+CITY_COLOR_HSV = HSVNeutral.WHITE.value
+SHOT_COLOR_HSV = HSVColor.GREEN.value
+AID_PACKGES_HSV = (200, 0.7, 0.6)
+
+AID_EXTRA_SHOT_HSV = HSVColor.GREEN.value
+AID_EXTRA_CANON_HSV = HSVColor.YELLOW.value
+AID_SLAWER_METEORS_HSV = HSVColor.ROSE.value
+AID_CITY_HP_HSV = HSVNeutral.WHITE.value
+AID_SPLINTER_SHOT_HSV = HSVColor.AZURE.value
+AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value
+
+AID_COLOR_BY_TYPE = {
+    'extra shot': AID_EXTRA_SHOT_HSV,
+    'extra canon': AID_EXTRA_CANON_HSV,
+    'slawer meteors': AID_SLAWER_METEORS_HSV,
+    'city hp': AID_CITY_HP_HSV,
+    'splinter shot': AID_SPLINTER_SHOT_HSV,
+    'dubel score': AID_DUBEL_SCORE_HSV,
+}
+
+
 
 
 class Drawer:

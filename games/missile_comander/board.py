@@ -2,36 +2,10 @@ from random import randrange, choice
 from copy import deepcopy
 from collections import deque, namedtuple
 
-from games.missile_comander.colors import HSVColor, HSVNeutral
-
 from platforms.interfaces import Key, KeyHandler
 
 
 TURN_INTERVAL = 0.08
-
-SHIP_COLOR_HSV = HSVColor.BLUE.value
-SHIP2_COLOR_HSV = HSVColor.MAGENTA.value
-METEOR_COLOR_HSV = HSVColor.RED.value
-BORDER_COLOR_HSV = HSVColor.AZURE.with_sv(0.7, 0.6)
-CITY_COLOR_HSV = HSVNeutral.WHITE.value
-SHOT_COLOR_HSV = HSVColor.GREEN.value
-AID_PACKGES_HSV = (200, 0.7, 0.6)
-
-AID_EXTRA_SHOT_HSV = HSVColor.GREEN.value
-AID_EXTRA_CANON_HSV = HSVColor.YELLOW.value
-AID_SLAWER_METEORS_HSV = HSVColor.ROSE.value
-AID_CITY_HP_HSV = HSVNeutral.WHITE.value
-AID_SPLINTER_SHOT_HSV = HSVColor.AZURE.value
-AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value
-
-AID_COLOR_BY_TYPE = {
-    'extra shot': AID_EXTRA_SHOT_HSV,
-    'extra canon': AID_EXTRA_CANON_HSV,
-    'slawer meteors': AID_SLAWER_METEORS_HSV,
-    'city hp': AID_CITY_HP_HSV,
-    'splinter shot': AID_SPLINTER_SHOT_HSV,
-    'dubel score': AID_DUBEL_SCORE_HSV,
-}
 
 START_MAX_SHOT = 3
 BASE_SHOT_MATRIX = [[1]]
@@ -133,14 +107,14 @@ SCORE_MULTIPLIER = 2
 # table is the only place that says which keys, color and start column a
 # ship has.
 ShipControls = namedtuple('ShipControls', ['left', 'right', 'fire'])
-ShipSetup = namedtuple('ShipSetup', ['controls', 'color', 'column'])
+ShipSetup = namedtuple('ShipSetup', ['controls', 'column'])
 
 SHIP_ROW = 29
 SHIP_SETUPS = [
     # player 1: arrow keys, fires with UP
-    ShipSetup(ShipControls(Key.LEFT, Key.RIGHT, Key.UP), SHIP_COLOR_HSV, 29),
+    ShipSetup(ShipControls(Key.LEFT, Key.RIGHT, Key.UP), 29),
     # player 2: W A S D, fires with W (S is not used yet)
-    ShipSetup(ShipControls(Key.P2_LEFT, Key.P2_RIGHT, Key.P2_UP), SHIP2_COLOR_HSV, 9),
+    ShipSetup(ShipControls(Key.P2_LEFT, Key.P2_RIGHT, Key.P2_UP), 9),
 ]
 
 
@@ -215,11 +189,10 @@ class City(GameObject):
 
 
 class Ship(GameObject):
-    def __init__(self, pos, matrix, controls, color, level=1, splinter_level=0,
+    def __init__(self, pos, matrix, controls, level=1, splinter_level=0,
                  max_shot=START_MAX_SHOT):
         super().__init__(pos, matrix)
         self.controls = controls
-        self.color = color
         self.level = level
         self.splinter_level = splinter_level
         self.max_shot = max_shot
@@ -524,8 +497,7 @@ class Board:
         for setup in SHIP_SETUPS:
             self.ships.append(Ship(pos=[SHIP_ROW, setup.column],
                                    matrix=deepcopy(SHIP_MATRIX),
-                                   controls=setup.controls,
-                                   color=setup.color))
+                                   controls=setup.controls))
 
     def _add_shot(self, ship):
         own_shots = sum(1 for shot in self.shots if shot.owner is ship)
