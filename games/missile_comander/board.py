@@ -21,8 +21,16 @@ AID_EXTRA_CANON_HSV = HSVColor.YELLOW.value
 AID_SLAWER_METEORS_HSV = HSVColor.ROSE.value
 AID_CITY_HP_HSV = HSVNeutral.WHITE.value
 AID_SPLINTER_SHOT_HSV = HSVColor.AZURE.value
-AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value 
+AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value
 
+AID_COLOR_BY_TYPE = {
+    'extra shot': AID_EXTRA_SHOT_HSV,
+    'extra canon': AID_EXTRA_CANON_HSV,
+    'slawer meteors': AID_SLAWER_METEORS_HSV,
+    'city hp': AID_CITY_HP_HSV,
+    'splinter shot': AID_SPLINTER_SHOT_HSV,
+    'dubel score': AID_DUBEL_SCORE_HSV,
+}
 
 START_MAX_SHOT = 3
 BASE_SHOT_MATRIX = [[1]]
@@ -86,6 +94,35 @@ MAX_METEORS_ON_SCREEN = 10
 
 BASE_DANGER_BUDGET = 10
 DANGER_BUDGET_PER_SCORE_POINT = 5  # +1 budget for every 5 points scored
+
+
+# --- Aid package system -------------------------------------------------
+# The game level comes from the score. Each level plans a few aid packages
+# at random scores inside that level's score range: MIN..MAX per level,
+# plus one extra every EXTRA_AID_EVERY_N_LEVELS levels. So packages per
+# level stay roughly constant no matter how many meteors get shot.
+SCORE_PER_LEVEL = 100
+MIN_AID_PER_LEVEL = 1
+MAX_AID_PER_LEVEL = 2
+EXTRA_AID_EVERY_N_LEVELS = 3
+
+# The score of the meteor that dropped a package picks the tier its type
+# is drawn from: (minimum meteor score, aid types that can drop there).
+# Sorted ascending. Tougher meteors (big / zig-zag / fast) drop rarer ones.
+AID_TYPES_BY_SCORE = [
+    (0, ['extra shot', 'city hp']),
+    (15, ['slawer meteors', 'extra canon']),
+    (25, ['splinter shot', 'dubel score']),
+]
+
+# Timed aid effects, in seconds of play (converted to turns with
+# TURN_INTERVAL). Picking one up again while active refreshes its timer.
+EFFECT_SECONDS = {
+    'dubel score': 60,
+    'extra canon': 30,
+    'slawer meteors': 30,
+}
+SCORE_MULTIPLIER = 2
 
 
 # Both paddles move continuously while held (KeyHandler.is_pressed(), like
@@ -240,9 +277,10 @@ class Meteor(GameObject):
 
 
 class AidPackage(GameObject):
-    def __init__(self, pos, matrix, aid_type):
+    def __init__(self, pos, matrix, aid_type, score=0):
         super().__init__(pos, matrix)
         self.type = aid_type
+        self.score = score  # score of the meteor that dropped it
 
 
 # ---------------------------------------------------------------------------
@@ -357,8 +395,14 @@ class Board:
        serving as a bleak reflection of Cold War anxieties."""
 
     def __init__(self):
-        self.score = 0
         self.high_score = 0
+        self._reset_state()
+
+    def _reset_state(self):
+        """Everything that must go back to its starting value for a new
+        game. Used by __init__ and start(), so the two can't drift apart
+        (high_score is the only thing that survives a restart)."""
+        self.score = 0
         self.cities = []
         self.ship = None
         self.shots = []
@@ -368,6 +412,19 @@ class Board:
         self.METEORS_CUONTER = 5
         self.max_shot = START_MAX_SHOT
         self.meteors_turn_frame = deque([True, False, False, False, False, False])
+        self.active_effects = {}        # effect name -> turns left
+        self.aid_drop_thresholds = []   # scores at which a package drops
+        self._aid_planned_level = 0     # highest game level already planned
+
+    @property
+    def game_level(self):
+        return 1 + self.score // SCORE_PER_LEVEL
+
+    @property
+    def score_multiplier(self):
+        """Applies only to the points added to the total score, not to the
+        meteor's own score (which still decides the package type)."""
+        return SCORE_MULTIPLIER if 'dubel score' in self.active_effects else 1
 
     @property
     def rel_max_shot(self):
@@ -380,15 +437,9 @@ class Board:
         return self.max_shot * shots_per_volley
 
     def start(self):
+        self._reset_state()
         self.create_cities()
         self.create_ship()
-        self.meteors = []
-        self.aid_packges = []
-        self.METEORS_CUONTER = 5
-        self.max_shot = START_MAX_SHOT
-        self.meteors_turn_frame = deque([True, False, False, False, False, False])
-        self.score = 0
-        self.game_over = False
 
     def create_cities(self):
         for i in range(6):
@@ -419,16 +470,40 @@ class Board:
 
         return shots
 
-    def _create_aid_packge(self, value):
-        # TODO (placeholder from your version): spawns two 'dubel score'
-        # packages and ignores `aid_types` / `value`.
-        aid_types = ['extra shot', 'extra canon', 'slawer meteors',
-                     'city hp', 'splinter shot', 'dubel score']
+    def _create_aid_packge(self, score):
         # exta cannon need to be orenge!!!
         self.aid_packges.append(
-            AidPackage(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]], aid_type='dubel score')
+            AidPackage(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]],
+                       aid_type=self._aid_type_for_score(score), score=score)
         )
-        
+
+    @staticmethod
+    def _aid_type_for_score(score):
+        """The meteor's score picks the tier; the type is random inside it."""
+        tier_types = AID_TYPES_BY_SCORE[0][1]
+        for min_score, types in AID_TYPES_BY_SCORE:
+            if score >= min_score:
+                tier_types = types
+        return choice(tier_types)
+
+    @staticmethod
+    def _aid_quota(level):
+        """How many packages this game level gets: MIN..MAX, plus one
+        extra every EXTRA_AID_EVERY_N_LEVELS levels."""
+        base = randrange(MIN_AID_PER_LEVEL, MAX_AID_PER_LEVEL + 1)
+        return base + (level - 1) // EXTRA_AID_EVERY_N_LEVELS
+
+    def _plan_aid_drops(self):
+        """Schedules packages, at random scores inside the level's score
+        range, for every game level reached but not planned yet."""
+        while self._aid_planned_level < self.game_level:
+            self._aid_planned_level += 1
+            first_score = (self._aid_planned_level - 1) * SCORE_PER_LEVEL
+            for _ in range(self._aid_quota(self._aid_planned_level)):
+                self.aid_drop_thresholds.append(
+                    randrange(first_score, first_score + SCORE_PER_LEVEL))
+        self.aid_drop_thresholds.sort()
+
     def is_game_over(self) -> bool:
         return self.game_over
 
@@ -450,6 +525,7 @@ class Board:
         self._aid_packges_ship_colide()
         self.remove_dead_object()
 
+        self._tick_effects()
         self.meteors_turn_frame.rotate(-1)
         # cities are no longer removed when destroyed (so 'city hp' can
         # restore them), so game over means every city is empty
@@ -552,26 +628,53 @@ class Board:
                 self.max_shot += 1
 
             case 'slawer meteors':
-                self.meteors_turn_frame += [False]
+                if 'slawer meteors' not in self.active_effects:
+                    self.meteors_turn_frame.append(False)
+                self._start_effect('slawer meteors')
 
             case 'city hp':
                 random_city = randrange(6)
                 self.cities[random_city].matrix = deepcopy(base_city_matrix)
 
             case 'extra canon':
-                if self.ship.level < MAX_SHIP_LEVEL:
-                    self.ship.level += 1
-                    self.ship.matrix = deepcopy(SHIP_MATRIX_LIST[self.ship.level - 1])
-                    # the new, wider ship must not poke past the right edge
-                    max_col = BOARD_WIDTH - self.ship.width
-                    self.ship.pos[1] = min(self.ship.pos[1], max_col)
+                self._set_ship_level(self.ship.level + 1)
+                self._start_effect('extra canon')
 
             case 'splinter shot':
                 if self.ship.splinter_level < MAX_SPLINTER_LEVEL:
                     self.ship.splinter_level += 1
 
             case 'dubel score':
-                self.score *= 2
+                self._start_effect('dubel score')
+
+    def _set_ship_level(self, level):
+        self.ship.level = max(1, min(level, MAX_SHIP_LEVEL))
+        self.ship.matrix = deepcopy(SHIP_MATRIX_LIST[self.ship.level - 1])
+        # a wider ship must not poke past the right edge
+        self.ship.pos[1] = min(self.ship.pos[1], BOARD_WIDTH - self.ship.width)
+
+    @staticmethod
+    def _seconds_to_turns(seconds):
+        return round(seconds / TURN_INTERVAL)
+
+    def _start_effect(self, name):
+        self.active_effects[name] = self._seconds_to_turns(EFFECT_SECONDS[name])
+
+    def _tick_effects(self):
+        for name in list(self.active_effects):
+            self.active_effects[name] -= 1
+            if self.active_effects[name] <= 0:
+                del self.active_effects[name]
+                self._end_effect(name)
+
+    def _end_effect(self, name):
+        match name:
+            case 'extra canon':
+                self._set_ship_level(1)
+            case 'slawer meteors':
+                self.meteors_turn_frame.remove(False)
+            # 'dubel score' needs no cleanup: score_multiplier reads
+            # active_effects directly.
 
     def remove_dead_object(self):
         self.shots = [shot for shot in self.shots if not shot.is_empty()]
@@ -579,8 +682,12 @@ class Board:
         self.aid_packges = [ap for ap in self.aid_packges if not ap.is_empty()]
 
     def _reword(self, meteor):
-        self.score += meteor.score
-        packge_value = randrange(meteor.score)
-        packge_value = 10  # TODO (placeholder): forces a drop on every kill
-        if packge_value > 5:
-            self._create_aid_packge(packge_value)
+        """Called when a shot destroys a meteor: adds its score to the total
+        (doubled while 'dubel score' is active) and drops every planned
+        package whose score has now been reached, carrying this meteor's
+        own score."""
+        self.score += meteor.score * self.score_multiplier
+        self._plan_aid_drops()
+        while self.aid_drop_thresholds and self.score >= self.aid_drop_thresholds[0]:
+            self.aid_drop_thresholds.pop(0)
+            self._create_aid_packge(meteor.score)
