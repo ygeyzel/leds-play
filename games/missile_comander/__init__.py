@@ -59,4 +59,3 @@ class MissileCommandGame(Game):
     def on_game_over_tick(self):
         self._board.start()
 
-        # no function drawer.blink_board, need to reaset the game some other way or implement!

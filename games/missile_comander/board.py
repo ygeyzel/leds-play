@@ -16,6 +16,14 @@ CITY_COLOR_HSV = HSVNeutral.WHITE.value
 SHOT_COLOR_HSV = HSVColor.GREEN.value
 AID_PACKGES_HSV = (200, 0.7, 0.6)
 
+AID_EXTRA_SHOT_HSV = HSVColor.GREEN.value
+AID_EXTRA_CANON_HSV = HSVColor.YELLOW.value
+AID_SLAWER_METEORS_HSV = HSVColor.ROSE.value
+AID_CITY_HP_HSV = HSVNeutral.WHITE.value
+AID_SPLINTER_SHOT_HSV = HSVColor.AZURE.value
+AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value 
+
+
 START_MAX_SHOT = 3
 BASE_SHOT_MATRIX = [[1]]
 
@@ -420,10 +428,7 @@ class Board:
         self.aid_packges.append(
             AidPackage(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]], aid_type='dubel score')
         )
-        self.aid_packges.append(
-            AidPackage(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]], aid_type='dubel score')
-        )
-
+        
     def is_game_over(self) -> bool:
         return self.game_over
 
