@@ -46,8 +46,9 @@ class Drawer:
         self._banner_matrix = banner_matrix
 
         board = Board()
+        self._canvas_dimensions = matrix.dimensions  # (rows, cols)
         self._board_canvas = self._matrix.create_canvas(
-            BOARD_POS_0, matrix.dimensions)
+            BOARD_POS_0, self._canvas_dimensions)
 
         self.board = board
         self._city_color = CITY_COLOR_HSV
@@ -57,7 +58,6 @@ class Drawer:
         self._aid_packges_color = AID_PACKGES_HSV
 
     def draw_board(self):
-        self._board_canvas.draw_borders(BORDER_COLOR_HSV)
         self.draw_cities()
         self.draw_ships()
         self.draw_miteors()
@@ -65,36 +65,27 @@ class Drawer:
         self.draw_aid_packges()
         self.show()
 
-    @staticmethod
-    def get_metrix_pos(game_object):
-        all_object_pos = []
-        for i, row in enumerate(game_object.matrix):
-            for j, col in enumerate(row):
-                if col:
-                    x = game_object.pos[0] + i
-                    y = game_object.pos[1] + j
-                    all_object_pos.append((x, y))
+    def _is_inside_canvas(self, pos):
+        rows, cols = self._canvas_dimensions
+        return 0 <= pos[0] < rows and 0 <= pos[1] < cols
 
-        return all_object_pos
-
-    def draw_list(self, game_objects, color):
-        for game_object in game_objects:
-            all_object_pos = self.get_metrix_pos(game_object)
-            for pos in all_object_pos:
+    def draw_object(self, game_object, color):
+        """Paints every filled cell of one object. Cells outside the canvas
+        are skipped instead of raising, so an object that reaches (or
+        pokes past) an edge can never crash the drawer."""
+        for pos in game_object.filled_cells():
+            if self._is_inside_canvas(pos):
                 self._board_canvas[pos] = color
 
-    def draw_list_colors_choise(self, game_objects, colors):
+    def draw_list(self, game_objects, color):
+        """`color` is either one color for every object, or a function that
+        picks the color of each object, e.g. `lambda pkg: COLORS[pkg.type]`."""
         for game_object in game_objects:
-            all_object_pos = self.get_metrix_pos(game_object)
-            for pos in all_object_pos:
-                self._board_canvas[pos] = colors[game_object.type]
+            self.draw_object(game_object, color(game_object) if callable(color) else color)
 
     def draw_ships(self):
-        ships = self.board.ships
-        for i, ship in enumerate(ships):
-            all_ship_pos = self.get_metrix_pos(ship)
-            for pos in all_ship_pos:
-                self._board_canvas[pos] = self._ship_colors[i]
+        for ship, color in zip(self.board.ships, self._ship_colors):
+            self.draw_object(ship, color)
 
     def draw_cities(self):
         self.draw_list(self.board.cities, self._city_color)
@@ -106,7 +97,8 @@ class Drawer:
         self.draw_list(self.board.shots, self._shot_color)
 
     def draw_aid_packges(self):
-        self.draw_list_colors_choise(self.board.aid_packges, AID_COLOR_BY_TYPE)
+        self.draw_list(self.board.aid_packges,
+                       lambda aid_packge: AID_COLOR_BY_TYPE[aid_packge.type])
 
     def show(self):
         self._matrix.show()

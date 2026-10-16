@@ -2,20 +2,41 @@ from random import randrange, choice
 from copy import deepcopy
 from collections import deque, namedtuple
 
+from games.missile_comander.colors import HSVColor, HSVNeutral
+
 from platforms.interfaces import Key, KeyHandler
 
 
 TURN_INTERVAL = 0.08
 
+METEOR_COLOR_HSV = HSVColor.RED.value
+BORDER_COLOR_HSV = HSVColor.AZURE.with_sv(0.7, 0.6)
+CITY_COLOR_HSV = HSVNeutral.WHITE.value
+SHOT_COLOR_HSV = HSVColor.GREEN.value
+AID_PACKGES_HSV = (200, 0.7, 0.6)
+
+AID_EXTRA_SHOT_HSV = HSVColor.GREEN.value
+AID_EXTRA_CANON_HSV = HSVColor.YELLOW.value
+AID_SLAWER_METEORS_HSV = HSVColor.ROSE.value
+AID_CITY_HP_HSV = HSVNeutral.WHITE.value
+AID_SPLINTER_SHOT_HSV = HSVColor.AZURE.value
+AID_DUBEL_SCORE_HSV = HSVColor.ORANGE.value
+
+AID_COLOR_BY_TYPE = {
+    'extra shot': AID_EXTRA_SHOT_HSV,
+    'extra canon': AID_EXTRA_CANON_HSV,
+    'slawer meteors': AID_SLAWER_METEORS_HSV,
+    'city hp': AID_CITY_HP_HSV,
+    'splinter shot': AID_SPLINTER_SHOT_HSV,
+    'dubel score': AID_DUBEL_SCORE_HSV,
+}
+
 START_MAX_SHOT = 3
 BASE_SHOT_MATRIX = [[1]]
 
-# base_city_matrix = [[0, 0, 1, 0, 0],
-#                     [0, 1, 1, 1, 0],
-#                     [1, 1, 1, 1, 1]]
-base_city_matrix = [[0, 0, 0, 0, 0],
-                    [0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0]]
+base_city_matrix = [[0, 0, 1, 0, 0],
+                    [0, 1, 1, 1, 0],
+                    [1, 1, 1, 1, 1]]
 
 SHIP_MATRIX = [[0, 1, 0],
                [1, 1, 1]]
@@ -50,6 +71,10 @@ BIG_METEOR_MATRIX = [[1, 1],
 # Canvas is (32, 40) rows x cols.
 BOARD_HEIGHT = 32
 BOARD_WIDTH = 40
+
+# A ship may hang this many cells past the left and right edge, so its centre
+# cannon can reach the outermost column. The hanging cells are not drawn.
+SHIP_OVERHANG = 1
 
 
 # --- Meteor "danger budget" difficulty system ---------------------------
@@ -169,11 +194,13 @@ class GameObject:
 
     def is_on_edge(self, pos=None):
         """True if the whole shape (not just its anchor) sits inside the
-        board. Pass `pos` to test a hypothetical position instead of the
-        object's current one."""
+        board, edges included: with no border drawn, the playable area is
+        the whole canvas (rows 0..BOARD_HEIGHT-1, columns 0..BOARD_WIDTH-1).
+        Pass `pos` to test a hypothetical position instead of the object's
+        current one."""
         pos = pos if pos is not None else self.pos
-        if (0 < pos[0] and pos[0] + self.height <= BOARD_HEIGHT and
-                0 < pos[1] and pos[1] + self.width <= BOARD_WIDTH):
+        if (0 <= pos[0] and pos[0] + self.height <= BOARD_HEIGHT and
+                0 <= pos[1] and pos[1] + self.width <= BOARD_WIDTH):
             return True
 
     def is_empty(self):
@@ -196,6 +223,17 @@ class Ship(GameObject):
         self.level = level
         self.splinter_level = splinter_level
         self.max_shot = max_shot
+
+    def fits_at(self, pos):
+        """True if the ship may stand at `pos`: inside the board, give or
+        take SHIP_OVERHANG cells past the left and right edge."""
+        return (-SHIP_OVERHANG <= pos[1] and
+                pos[1] + self.width <= BOARD_WIDTH + SHIP_OVERHANG)
+
+    @property
+    def max_column(self):
+        """Rightmost column the ship's anchor can reach at its current width."""
+        return BOARD_WIDTH - self.width + SHIP_OVERHANG
 
     @property
     def shot_limit(self):
@@ -269,7 +307,7 @@ class Meteor(GameObject):
 
         side = choice([1, -1])
         width = len(matrix[0])
-        starter_pos = [1, randrange(1, BOARD_WIDTH - width)]
+        starter_pos = [0, randrange(0, BOARD_WIDTH - width + 1)]
 
         meteor = cls(pos=starter_pos, matrix=deepcopy(matrix),
                      is_zig_zag=is_zig_zag, side=side, speed=speed)
@@ -296,7 +334,7 @@ class AidPackage(GameObject):
         """A package that falls from a random column. Its type comes from
         the score of the meteor that dropped it."""
         # exta cannon need to be orenge!!!
-        return cls(pos=[1, randrange(1, BOARD_WIDTH)], matrix=[[1]],
+        return cls(pos=[0, randrange(BOARD_WIDTH)], matrix=[[1]],
                    aid_type=cls.type_for_score(score), score=score)
 
     def touches(self, other):
@@ -403,42 +441,54 @@ def _cell_paths(obj, prev_pos):
     return paths
 
 
-def _swept_collide(obj_a, prev_pos_a, obj_b, prev_pos_b):
-    """True if any filled cell of obj_a's swept path crossed or overlapped
-    any filled cell of obj_b's swept path this turn. Works for shapes of
-    any size and any (consistent) speed, as long as they only translate
-    (no rotation) between turns."""
+def _impact_time(path_a, path_b):
+    """When, as a fraction of the turn (0..1), two moving cells were closest
+    to each other. Only used to put contacts in the order they happened."""
+    (a_start, a_end), (b_start, b_end) = path_a, path_b
+    gap = (a_start[0] - b_start[0], a_start[1] - b_start[1])
+    closing = ((a_end[0] - a_start[0]) - (b_end[0] - b_start[0]),
+               (a_end[1] - a_start[1]) - (b_end[1] - b_start[1]))
+    closing_sq = closing[0] ** 2 + closing[1] ** 2
+    if closing_sq == 0:
+        return 0.0
+    time = -(gap[0] * closing[0] + gap[1] * closing[1]) / closing_sq
+    return max(0.0, min(1.0, time))
+
+
+def resolve_swept_collision(obj_a, prev_pos_a, obj_b, prev_pos_b):
+    """Destroys the cells of obj_a and obj_b whose paths crossed or touched
+    this turn, so fast objects can't skip over each other or over a
+    stationary one (pass the object's own `pos` as its previous position if
+    it didn't move). Works for any shape size and speed, as long as shapes
+    only translate (no rotation) between turns.
+
+    Contacts are handled earliest first, and every cell is destroyed at most
+    once: a one-cell shot destroys the first meteor cell it reaches, not
+    every cell along its way. Returns the (offset_a, offset_b) pairs
+    destroyed -- empty if nothing touched."""
+    offsets_a = obj_a.filled_offsets()
+    offsets_b = obj_b.filled_offsets()
     paths_a = _cell_paths(obj_a, prev_pos_a)
     paths_b = _cell_paths(obj_b, prev_pos_b)
 
-    for prev_cell_a, cur_cell_a in paths_a:
-        for prev_cell_b, cur_cell_b in paths_b:
-            if _segments_intersect(prev_cell_a, cur_cell_a, prev_cell_b, cur_cell_b):
-                return True
+    contacts = []
+    for offset_a, path_a in zip(offsets_a, paths_a):
+        for offset_b, path_b in zip(offsets_b, paths_b):
+            if _segments_intersect(*path_a, *path_b):
+                contacts.append((_impact_time(path_a, path_b), offset_a, offset_b))
+    contacts.sort(key=lambda contact: contact[0])
 
-    return False
-
-
-def _is_matrix_collide(obj_a_filled, obj_b_filled):
-    return bool(obj_a_filled & obj_b_filled)
-
-
-def resolve_bomb_collision(obj_a, obj_b):
-    """Zeroes out every cell where obj_a and obj_b's filled cells overlap
-    at their CURRENT positions (used for things that don't both move fast
-    enough to tunnel, e.g. meteor vs. stationary city)."""
-    a_cells = obj_a.filled_cell_map()
-    b_cells = obj_b.filled_cell_map()
-
-    collisions = list(a_cells.keys() & b_cells.keys())
-
-    for board_pos in collisions:
-        ai, aj = a_cells[board_pos]
-        bi, bj = b_cells[board_pos]
-        obj_a.matrix[ai][aj] = 0
-        obj_b.matrix[bi][bj] = 0
-
-    return collisions
+    destroyed = []
+    used_a, used_b = set(), set()
+    for _, offset_a, offset_b in contacts:
+        if offset_a in used_a or offset_b in used_b:
+            continue
+        used_a.add(offset_a)
+        used_b.add(offset_b)
+        obj_a.matrix[offset_a[0]][offset_a[1]] = 0
+        obj_b.matrix[offset_b[0]][offset_b[1]] = 0
+        destroyed.append((offset_a, offset_b))
+    return destroyed
 
 
 class Board:
@@ -487,11 +537,12 @@ class Board:
 
     def create_cities(self):
         for i in range(6):
-            mod = 0
-            if i > 2:
-                mod += 3
+            # two groups of three, 6 columns apart. Each group is pushed one
+            # column outward so the leftmost city touches column 0 and the
+            # rightmost touches the last column.
+            group_shift = -1 if i < 3 else 4
             matrix = deepcopy(base_city_matrix)
-            self.cities.append(City(pos=(25, 1 + (6 * i) + mod), matrix=matrix))
+            self.cities.append(City(pos=(25, 1 + (6 * i) + group_shift), matrix=matrix))
 
     def create_ships(self):
         for setup in SHIP_SETUPS:
@@ -510,6 +561,8 @@ class Board:
         directions = SPLINTER_SHOT_DIRECTIONS[ship.splinter_level]
 
         for rel_pos in SHOOTS_BY_LVL[ship.level]:
+            if not 0 <= ship_pos_y + rel_pos < BOARD_WIDTH:
+                continue  # a cannon hanging off the edge can't fire
             shot_origin = [ship_pos_x, ship_pos_y + rel_pos]
             for direction in directions:
                 shots.append(Shot(pos=shot_origin.copy(),
@@ -555,7 +608,7 @@ class Board:
             self._advence_meteors()
 
         self._meteors_shot_colide(prev_meteor_pos, prev_shot_pos)
-        self._meteors_city_colide()
+        self._meteors_city_colide(prev_meteor_pos)
         self._aid_packges_ship_colide()
         self.remove_dead_object()
 
@@ -589,12 +642,12 @@ class Board:
         for ship in self.ships:
             if key_handler.is_pressed(ship.controls.left):
                 prospective_pos = [ship.pos[0], ship.pos[1] - 1]
-                if ship.is_on_edge(prospective_pos):
+                if ship.fits_at(prospective_pos):
                     ship.pos[1] -= 1
 
             if key_handler.is_pressed(ship.controls.right):
                 prospective_pos = [ship.pos[0], ship.pos[1] + 1]
-                if ship.is_on_edge(prospective_pos):
+                if ship.fits_at(prospective_pos):
                     ship.pos[1] += 1
 
             if key_handler.is_pressed(ship.controls.fire):
@@ -628,17 +681,18 @@ class Board:
     def _meteors_shot_colide(self, prev_meteor_pos, prev_shot_pos):
         for meteor in self.meteors.copy():
             for shot in self.shots.copy():
-                if _swept_collide(meteor, prev_meteor_pos[id(meteor)],
-                                   shot, prev_shot_pos[id(shot)]):
-                    resolve_bomb_collision(meteor, shot)
+                if resolve_swept_collision(meteor, prev_meteor_pos[id(meteor)],
+                                           shot, prev_shot_pos[id(shot)]):
                     if meteor.is_empty():
                         self._reword(meteor)
+                        break
 
-    def _meteors_city_colide(self):
+    def _meteors_city_colide(self, prev_meteor_pos):
         for meteor in self.meteors:
             for city in self.cities:
-                if _is_matrix_collide(meteor.filled_cells(), city.filled_cells()):
-                    resolve_bomb_collision(meteor, city)
+                # a city never moves, so its previous position is its position
+                resolve_swept_collision(meteor, prev_meteor_pos[id(meteor)],
+                                        city, city.pos)
 
     def _aid_packges_ship_colide(self):
         for aid_packge in self.aid_packges:
@@ -651,7 +705,7 @@ class Board:
         ship.level = max(1, min(level, MAX_SHIP_LEVEL))
         ship.matrix = deepcopy(SHIP_MATRIX_LIST[ship.level - 1])
         # a wider ship must not poke past the right edge
-        ship.pos[1] = min(ship.pos[1], BOARD_WIDTH - ship.width)
+        ship.pos[1] = min(ship.pos[1], ship.max_column)
 
     @staticmethod
     def _seconds_to_turns(seconds):
