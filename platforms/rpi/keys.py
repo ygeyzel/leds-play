@@ -1,7 +1,6 @@
 from RPi import GPIO
 
-from hardware.interfaces import Key, KeyHandler
-
+from platforms.interfaces import Key, KeyHandler
 
 GPIO.setmode(GPIO.BCM)
 
@@ -17,6 +16,7 @@ class RpiKeyHandler(KeyHandler):
     def __init__(self):
         self._last_key_pressed = Key.NO_KEY
         self._key_clicked = Key.NO_KEY
+        self._held_keys = set()
         self._pin_to_key = {pin: key for key, pin in _KEY_PINS.items()}
 
         for key, pin in _KEY_PINS.items():
@@ -27,17 +27,26 @@ class RpiKeyHandler(KeyHandler):
         key = self._pin_to_key[channel]
 
         if GPIO.input(channel):
+            self._held_keys.discard(key)
             if key == self._last_key_pressed:
                 self._key_clicked = key
                 self._last_key_pressed = Key.NO_KEY
         else:
             self._last_key_pressed = key
+            self._held_keys.add(key)
 
     def get_key(self) -> Key:
+        # Only clears the one-shot _key_clicked, not _last_key_pressed: a
+        # press already seen but not yet released must survive across
+        # get_key() calls, or a fast poller (the menu) can wipe it before
+        # the matching release ever arrives, silently dropping the click.
         key = self._key_clicked
-        self.flush()
+        self._key_clicked = Key.NO_KEY
         return key
 
     def flush(self):
         self._last_key_pressed = Key.NO_KEY
         self._key_clicked = Key.NO_KEY
+
+    def is_pressed(self, key: Key) -> bool:
+        return key in self._held_keys

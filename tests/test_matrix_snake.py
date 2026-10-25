@@ -11,9 +11,8 @@ import argparse
 from itertools import product
 from time import sleep
 
-from game.drawer import MATRIX_DPIN, MATRIX_HEIGHT, NUM_OF_MATRICES, SINGLE_MATRIX_WIDTH
-from hardware.factory import create_matrix
-
+from main import MATRIX_DPIN, MATRIX_HEIGHT, NUM_OF_MATRICES, SINGLE_MATRIX_WIDTH
+from platforms.factory import create_matrix
 
 RECT_WIDTH = 5
 RECT_HEIGHT = 3

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from common.common import Position
-from hardware.interfaces import KeyHandler, Matrix, ScoreDisplay
+from platforms.interfaces import AudioPlayer, KeyHandler, Matrix, ScoreDisplay
 
 
 def create_matrix(
@@ -9,10 +9,10 @@ def create_matrix(
     num_of_matrices: int = 4, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
     if mode == "rpi":
-        from hardware.rpi.leds import ChainedMatrix
+        from platforms.rpi.leds import ChainedMatrix
         return ChainedMatrix(din_pin, num_of_matrices, matrix_max_x, matrix_max_y)
 
-    from hardware.simulator.leds import SimulatorMatrix
+    from platforms.simulator.leds import SimulatorMatrix
     return SimulatorMatrix(
         matrix_max_x, matrix_max_y, num_of_matrices,
         region="board", banner_dims=banner_dims)
@@ -32,23 +32,32 @@ def create_banner_matrix(
                 f"ignoring requested --size-of-banner {num_of_matrices}")
         return None
 
-    from hardware.simulator.leds import SimulatorMatrix
+    from platforms.simulator.leds import SimulatorMatrix
     return SimulatorMatrix(matrix_max_x, matrix_max_y, num_of_matrices, region="banner")
 
 
 def create_key_handler(mode: str) -> KeyHandler:
     if mode == "rpi":
-        from hardware.rpi.keys import RpiKeyHandler
+        from platforms.rpi.keys import RpiKeyHandler
         return RpiKeyHandler()
 
-    from hardware.simulator.keys import SimulatorKeyHandler
+    from platforms.simulator.keys import SimulatorKeyHandler
     return SimulatorKeyHandler()
 
 
 def create_score_display(mode: str) -> ScoreDisplay:
     if mode == "rpi":
-        from hardware.rpi.score import SerialScoreDisplay
+        from platforms.rpi.score import SerialScoreDisplay
         return SerialScoreDisplay()
 
-    from hardware.simulator.score import SimulatorScoreDisplay
+    from platforms.simulator.score import SimulatorScoreDisplay
     return SimulatorScoreDisplay()
+
+
+def create_audio_player(mode: str) -> AudioPlayer:
+    if mode == "rpi":
+        from platforms.rpi.audio import RpiAudioPlayer
+        return RpiAudioPlayer()
+
+    from platforms.simulator.audio import SimulatorAudioPlayer
+    return SimulatorAudioPlayer()

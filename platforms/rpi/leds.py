@@ -2,9 +2,8 @@ from time import monotonic, sleep
 
 from adafruit_raspberry_pi5_neopixel_write import neopixel_write
 
-from common.common import Position, HsvColor, hsv_to_rgb, is_position_out_of_range
-from hardware.interfaces import Matrix
-
+from common.common import HsvColor, Position, hsv_to_rgb, is_position_out_of_range
+from platforms.interfaces import Matrix
 
 DEFAULT_DIN_PIN = 4
 DEFAULT_NUM_OF_MATRICES = 4

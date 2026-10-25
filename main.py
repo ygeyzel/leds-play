@@ -1,10 +1,30 @@
 import argparse
 from time import sleep, time
 
-from game.drawer import NUM_OF_MATRICES, SIZE_OF_BANNER, Drawer
-from game.game_board import Board
-from hardware.factory import create_key_handler, create_score_display
-from hardware.interfaces import Key, KeyHandler
+from games.base import Game
+from games.menu import MenuGame
+from games.registry import GAMES
+from platforms.factory import (
+    create_audio_player,
+    create_banner_matrix,
+    create_key_handler,
+    create_matrix,
+    create_score_display,
+)
+from platforms.interfaces import AudioPlayer, Key, KeyHandler
+
+# Physical rig layout: shared by the menu and every game, so it's owned
+# here rather than by any one game (see games/tetris/drawer.py, which used
+# to build these itself back when it was the only thing running).
+SINGLE_MATRIX_WIDTH = 8
+MATRIX_HEIGHT = 32
+MATRIX_DPIN = 4
+NUM_OF_MATRICES = 4
+
+BANNER_PANEL_WIDTH = 32
+BANNER_PANEL_HEIGHT = 8
+BANNER_DPIN = 13  # placeholder; unused until rpi banner support lands
+SIZE_OF_BANNER = 2
 
 
 def parse_args():
@@ -19,68 +39,120 @@ def parse_args():
         "--size-of-banner", type=int, default=SIZE_OF_BANNER,
         help="number of chained banner LED panels (each 8 rows x 32 cols); "
              "default: %(default)s. rpi mode doesn't support a banner yet.")
+    parser.add_argument(
+        "--start-game", metavar="NAME", choices=[game_cls.NAME for game_cls in GAMES],
+        default=None,
+        help="skip the menu and go straight into this game (by name); "
+             "default: start at the menu")
     return parser.parse_args()
 
 
-def init_game(board: Board, key_handler: KeyHandler):
-    board.start()
+def create_matrices(mode: str, num_of_matrices: int, banner_size: int):
+    """The one board `Matrix`/banner `Matrix` pair for the whole process,
+    shared by the menu and whichever game is currently active - hardware
+    only gets initialized once, not once per game."""
+
+    banner_dims = (BANNER_PANEL_HEIGHT, BANNER_PANEL_WIDTH * banner_size)
+    matrix = create_matrix(
+        mode, MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
+        banner_dims=banner_dims)
+    banner_matrix = create_banner_matrix(
+        mode, BANNER_DPIN, BANNER_PANEL_WIDTH, BANNER_PANEL_HEIGHT, banner_size)
+    return matrix, banner_matrix
+
+
+def init_game(game: Game, key_handler: KeyHandler):
+    game.start()
     key_handler.flush()
-
-
-def game_over(drawer: Drawer, key_handler: KeyHandler):
-    key_handler.flush()
-    end_time = time()
-
-    while key_handler.get_key() == Key.NO_KEY or time() - end_time < 2:
-        drawer.blink_board()
-        sleep(0.2)
+    # ENTER always does something (exit to menu, or - for the menu itself -
+    # launch), even for a game that doesn't list it in its own USED_KEYS.
+    key_handler.set_active_keys(game.USED_KEYS | {Key.ENTER})
 
 
 PUMP_INTERVAL = 0.02
 
 
-def _sleep(seconds: float, key_handler: KeyHandler):
+def _sleep(seconds: float, key_handler: KeyHandler, audio_player: AudioPlayer):
     """Sleep in small slices, pumping the key handler between them so a
     backend that needs to service a GUI event loop (the simulator) stays
-    responsive instead of freezing for the whole turn."""
+    responsive instead of freezing for the whole turn. While Key.PAUSE is
+    toggled on, the deadline is left untouched instead of counting down -
+    the turn clock halts exactly, with no drift, but keys (including
+    PAUSE itself, to unpause) keep being read every pump. Key.MUTE is
+    synced to the audio player on every pump too, for near-instant mute/
+    unmute regardless of how long the current turn's sleep is.
+
+    The deadline must never be nudged forward by a fixed PUMP_INTERVAL
+    per paused iteration (an earlier version did this): pump() itself
+    takes some non-zero time on top of that sleep, so each iteration's
+    real elapsed time is PUMP_INTERVAL-plus-pump()'s-own-cost - nudging
+    the deadline by only PUMP_INTERVAL each time silently drains the
+    remaining budget by that uncounted cost every iteration, eventually
+    letting a turn slip through despite still being paused. Leaving the
+    deadline alone entirely while paused has no such drift: whatever
+    remains gets picked back up, unchanged, the moment it's unpaused."""
 
     deadline = time() + seconds
-    while (remaining := deadline - time()) > 0:
+    while True:
         key_handler.pump()
+        audio_player.set_muted(key_handler.is_toggled(Key.MUTE))
+        if key_handler.is_toggled(Key.PAUSE):
+            sleep(PUMP_INTERVAL)
+            continue
+        remaining = deadline - time()
+        if remaining <= 0:
+            return
         sleep(min(PUMP_INTERVAL, remaining))
 
 
-def game_loop(score_display, board: Board, drawer: Drawer, key_handler: KeyHandler):
-    drawer.draw_board()
+def game_loop(score_display, game: Game, key_handler: KeyHandler, audio_player: AudioPlayer) -> bool:
+    """Runs one round of `game`. Returns True if the player asked to
+    restart the same game from its game-over screen (an arrow key), False
+    if control should go back to the menu instead."""
 
-    while not board.is_game_over():
-        dt = 1 / board.level
-        _sleep(dt, key_handler)
+    game.render()
+    score_display.send_score(game.score, game.best_score)
+
+    while not game.is_game_over():
+        _sleep(game.turn_interval, key_handler, audio_player)
 
         key = key_handler.get_key()
-        board.advance_turn(key)
+        if key == Key.ENTER and Key.ENTER not in game.USED_KEYS:
+            return False  # a game that doesn't use ENTER itself exits to the menu
 
-        drawer.clear()
-        drawer.draw_board()
-        score_display.send_score(board.score, board.best_score)
+        game.advance_turn(key)
+        game.render()
+        score_display.send_score(game.score, game.best_score)
 
-    game_over(drawer, key_handler)
+    return game.on_round_end(key_handler)
 
 
 def main():
     args = parse_args()
     mode = args.mode
 
-    drawer = Drawer(mode, args.num_of_matrices, args.size_of_banner)
-    board = drawer.board
-    board.burn_animation = drawer.burn_animation
-
+    matrix, banner_matrix = create_matrices(mode, args.num_of_matrices, args.size_of_banner)
     key_handler = create_key_handler(mode)
+    audio_player = create_audio_player(mode)
+    menu = MenuGame(matrix, banner_matrix, key_handler, audio_player=audio_player)
+
+    active = menu
+    if args.start_game:
+        game_cls = next(g for g in GAMES if g.NAME == args.start_game)
+        active = game_cls(matrix, banner_matrix, key_handler, audio_player=audio_player)
 
     with create_score_display(mode) as score_display:
         while True:
-            init_game(board, key_handler)
-            game_loop(score_display, board, drawer, key_handler)
+            init_game(active, key_handler)
+            restart = game_loop(score_display, active, key_handler, audio_player)
+
+            if active is menu:
+                active = menu.selected_game_cls(matrix, banner_matrix, key_handler, audio_player=audio_player)
+            elif not restart:
+                active.stop()
+                active = menu
+            # else: an arrow key on the game-over screen - keep playing
+            # the same game, init_game() will start() it fresh next loop.
 
 
 if __name__ == "__main__":

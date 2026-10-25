@@ -1,6 +1,4 @@
 import math
-import os
-
 from enum import Enum
 from functools import partial
 from itertools import product
@@ -8,10 +6,8 @@ from random import choice
 from typing import Optional
 
 from common.common import add_positions
-from hardware.interfaces import Key
+from platforms.interfaces import Key
 
-
-BEST_SCORE_FILE_NAME = ".best_score"
 BRICKS_VAL = 0.1
 
 BLOCK_SHAPES = {
@@ -58,10 +54,10 @@ class Board:
         self.game_over = False
         self.score = None
         self.lines = None
-        self.best_score = None
         self.level = None
 
         self.burn_animation = None
+        self.on_lines_cleared = None
 
     def dimensions_for_canvas(self):
         return self.dimensions
@@ -79,7 +75,6 @@ class Board:
         self.score = 0
         self.lines = 0
         self.level = 1
-        self.best_score = self._read_best_score()
 
         self._place_new_block()
 
@@ -163,8 +158,6 @@ class Board:
         else:
             self.score += 3
 
-        self._update_best_score()
-
     def _land_block(self):
         """Put block to the board and generate a new one"""
 
@@ -197,7 +190,10 @@ class Board:
 
                 self.board[0] = [None for _ in range(self.dimensions[1])]
                 self.score += 30 * lines
-        
+
+        if lines and self.on_lines_cleared:
+            self.on_lines_cleared(lines)
+
         self._level_advancing(lines)
 
     def _check_overlapping(self, pos, shape):
@@ -219,25 +215,6 @@ class Board:
             return False
 
         return not self._check_overlapping(pos, shape)
-
-    def _update_best_score(self):
-        """Save best score to file"""
-
-        if self.best_score < self.score:
-            self.best_score = self.score
-            with open(BEST_SCORE_FILE_NAME, "w") as file:
-                file.write(str(self.best_score))
-
-    @staticmethod
-    def _read_best_score():
-        """Read best score from file"""
-
-        if os.path.exists(f"./{BEST_SCORE_FILE_NAME}"):
-            with open(BEST_SCORE_FILE_NAME) as file:
-                value = file.read()
-                if value.isdigit():
-                    return int(value)
-        return 0
 
     @staticmethod
     def _get_new_block():

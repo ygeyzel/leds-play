@@ -73,6 +73,6 @@ those are never deleted on the Pi either.
   `python3 .claude/skills/rpi/scripts/rpi.py run -t -- python -m tests.test_keys`.
 - The LED matrix keeps its last frame if a process is killed mid-run; that's
   expected, not a bug in your change.
-- Keep hardware imports confined to `hardware/rpi/` (see CLAUDE.md) — being
+- Keep hardware imports confined to `platforms/rpi/` (see CLAUDE.md) — being
   able to run on the Pi is not a reason to import `RPi.GPIO`/`adafruit_raspberry_pi5_neopixel_write`
   elsewhere.

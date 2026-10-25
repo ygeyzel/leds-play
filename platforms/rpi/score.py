@@ -2,7 +2,7 @@ import time
 
 import serial
 
-from hardware.interfaces import ScoreDisplay
+from platforms.interfaces import ScoreDisplay
 
 
 class SerialScoreDisplay(ScoreDisplay):
