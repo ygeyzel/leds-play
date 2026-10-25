@@ -484,14 +484,15 @@ just a plan).
     bgm is busy again (resumed) afterward.
 - **rpi board matrix rewritten for the new hardware**: `DualMatrix` replaced
   by `platforms/rpi/leds.py`'s `ChainedMatrix` — N concatenated 8x32
-  snake-wired panels on one strip (default 4 panels, data pin GPIO 4), each
-  panel's x- and y-axes reversed vs. the previous one. `--num-of-matrices` now
-  works in rpi mode too; the shared default dropped from 5 to 4 to match
-  the real hardware. New manual check `tests/test_matrix_snake.py` (5x3
-  rectangle snaking top-left to bottom-right with changing colors; also
-  runs with `sim`). The old `tests/test_canvas.py`/`test_drawer.py`/
-  `test_keys.py`/`shared.py` were removed. The Pi is a Pi 5, which
-  `rpi_ws281x` doesn't support, so the driver now writes through Adafruit's
+  snake-wired panels on one strip (default 4 panels on data pin GPIO 4 at
+  the time; now 5 panels on GPIO 21), each panel's x- and y-axes reversed
+  vs. the previous one. `--num-of-matrices` now works in rpi mode too; the
+  shared default dropped from 5 to 4 at the time (since back to 5). New
+  manual check `tests/test_matrix_snake.py` (5x3 rectangle snaking top-left
+  to bottom-right with changing colors; also runs with `sim`). The old
+  `tests/test_canvas.py`/`test_drawer.py`/`test_keys.py`/`shared.py` were
+  removed. The Pi is a Pi 5, which `rpi_ws281x` doesn't support, so the
+  driver now writes through Adafruit's
   `Adafruit-Blinka-Raspberry-Pi5-Neopixel` (RP1 PIO, `/dev/pio0`) instead.
 
 ## In progress

@@ -6,7 +6,7 @@ from platforms.interfaces import AudioPlayer, KeyHandler, Matrix, ScoreDisplay
 
 def create_matrix(
     mode: str, din_pin: int, matrix_max_x: int, matrix_max_y: int,
-    num_of_matrices: int = 4, *, banner_dims: Optional[Position] = None,
+    num_of_matrices: int = 5, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
     if mode == "rpi":
         from platforms.rpi.leds import ChainedMatrix

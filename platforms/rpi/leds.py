@@ -5,8 +5,8 @@ from adafruit_raspberry_pi5_neopixel_write import neopixel_write
 from common.common import HsvColor, Position, hsv_to_rgb, is_position_out_of_range
 from platforms.interfaces import Matrix
 
-DEFAULT_DIN_PIN = 4
-DEFAULT_NUM_OF_MATRICES = 4
+DEFAULT_DIN_PIN = 21
+DEFAULT_NUM_OF_MATRICES = 5
 PANEL_MAX_X = 8
 PANEL_MAX_Y = 32
 BYTES_PER_LED = 3

@@ -18,8 +18,8 @@ from platforms.interfaces import AudioPlayer, Key, KeyHandler
 # to build these itself back when it was the only thing running).
 SINGLE_MATRIX_WIDTH = 8
 MATRIX_HEIGHT = 32
-MATRIX_DPIN = 4
-NUM_OF_MATRICES = 4
+MATRIX_DPIN = 21
+NUM_OF_MATRICES = 5
 
 BANNER_PANEL_WIDTH = 32
 BANNER_PANEL_HEIGHT = 8

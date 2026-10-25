@@ -80,8 +80,8 @@ description below.
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
 - `platforms/rpi/` — real-hardware backend:
-  - `leds.py` — `ChainedMatrix`: driver for N (default 4) concatenated 8x32
-    snake-wired WS281x panels on one data pin (default GPIO 4), each panel's
+  - `leds.py` — `ChainedMatrix`: driver for N (default 5) concatenated 8x32
+    snake-wired WS281x panels on one data pin (default GPIO 21), each panel's
     x- and y-axes reversed relative to the previous one. Imports
     `adafruit_raspberry_pi5_neopixel_write` at module scope (RPi-only).
   - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)

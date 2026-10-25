@@ -76,8 +76,8 @@ ends the round.
 
 ## Hardware (current)
 
-- A Raspberry Pi 5 driving four 8x32 WS281x LED panels chained on one data
-  pin (GPIO 4) as one 32x32 matrix (`--num-of-matrices` changes the count).
+- A Raspberry Pi 5 driving five 8x32 WS281x LED panels chained on one data
+  pin (GPIO 21) as one 40x32 matrix (`--num-of-matrices` changes the count).
 - 4 buttons (up, down, left, right) wired to GPIO pins.
 - Optional: an external serial (ESP32) score display.
 
@@ -88,7 +88,7 @@ updated to match yet (N board panels work, but still 4 buttons / no banner).
 
 ## Hardware (sim mode, configurable)
 
-- **Board matrix**: `--num-of-matrices N` (default 4) chains N 8x32 panels
+- **Board matrix**: `--num-of-matrices N` (default 5) chains N 8x32 panels
   side by side into an `8*N`-wide by 32-tall matrix.
 - **Banner**: `--size-of-banner N` (default 2) chains N 8-row-by-32-col
   panels side by side above the board matrix, as its own independent
