@@ -1,11 +1,12 @@
 from time import monotonic, sleep
+from typing import Optional
 
 from adafruit_raspberry_pi5_neopixel_write import neopixel_write
 
 from common.common import HsvColor, Position, hsv_to_rgb, is_position_out_of_range
 from platforms.interfaces import Matrix
+from platforms.rpi.mapping import load_mapping
 
-DEFAULT_DIN_PIN = 21
 DEFAULT_NUM_OF_MATRICES = 5
 PANEL_MAX_X = 8
 PANEL_MAX_Y = 32
@@ -39,9 +40,15 @@ class ChainedMatrix(Matrix):
     """
 
     def __init__(
-        self, din_pin: int = DEFAULT_DIN_PIN, num_of_matrices: int = DEFAULT_NUM_OF_MATRICES,
+        self, din_pin: Optional[int] = None, num_of_matrices: int = DEFAULT_NUM_OF_MATRICES,
         matrix_max_x: int = PANEL_MAX_X, matrix_max_y: int = PANEL_MAX_Y,
     ):
+        mapping = load_mapping()
+        if din_pin is None:
+            din_pin = mapping["leds_data_pin"]
+        # Scales every color's HSV value (0-1), so 1.0 shows colors as given.
+        self.brightness = mapping.get("leds_brightness", 1.0)
+
         self.matrix_max_x = matrix_max_x
         self.num_of_matrices = num_of_matrices
         self.max_y = matrix_max_y
@@ -81,7 +88,8 @@ class ChainedMatrix(Matrix):
         if is_position_out_of_range(index, (0, 0), self._dimensions):
             raise ValueError(
                 f"Position {index} is out of matrix boundreis - {self.max_x, self.max_y}")
-        r, g, b = hsv_to_rgb(value)
+        h, s, v = value
+        r, g, b = hsv_to_rgb((h, s, v * self.brightness))
         offset = self._get_linear_position(index) * BYTES_PER_LED
         # WS2812 LEDs take their color bytes in GRB order
         self._buffer[offset:offset + BYTES_PER_LED] = bytes((g, r, b))

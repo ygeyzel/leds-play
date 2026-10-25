@@ -494,6 +494,13 @@ just a plan).
   removed. The Pi is a Pi 5, which `rpi_ws281x` doesn't support, so the
   driver now writes through Adafruit's
   `Adafruit-Blinka-Raspberry-Pi5-Neopixel` (RP1 PIO, `/dev/pio0`) instead.
+- **rpi keys rewired for the new rig**: `platforms/rpi/keys.py` now reads 9
+  buttons (P1 D-pad, ENTER, P2 D-pad) from `platforms/rpi/mapping.json`'s
+  `keys` (`{"UP": [input pin, LED pin], ...}`, built from the user's
+  gpio-test `gpio-config.json`). Buttons are active-high with the internal
+  pull-down and a 20ms debounce; each button's LED is lit while its key is
+  in the current game's active set (`set_active_keys()`). The board
+  matrix's data pin (GPIO 21) moved into the same file as `leds_data_pin`.
 
 ## In progress
 
@@ -506,10 +513,10 @@ Roughly in the order they'll likely need to happen:
 1. **Expand the hardware config**: **partially done, sim side only** (see
    "Completed" above) — `--num-of-matrices`/`--size-of-banner` CLI flags
    and the 2nd D-pad + `Key.ENTER` are live in `sim` mode. Still needed:
-   - `platforms/rpi/*` board matrix now supports N panels (`ChainedMatrix`),
-     but keys are still fixed at 4 buttons and there's no banner — needs
-     GPIO pins picked for the 5 new buttons and a banner strip, and a rpi
-     banner-matrix implementation.
+   - `platforms/rpi/*` board matrix supports N panels (`ChainedMatrix`) and
+     all 9 buttons are wired (see the rpi keys entry above), but there's no
+     banner — needs a banner strip and a rpi banner-matrix implementation.
+     PAUSE/MUTE have no physical buttons yet.
    - `BOARD_POS_0` etc. in `games/tetris/drawer.py` are still hardcoded
      Tetris layout constants (unaffected by the bigger matrix — Tetris just
      gets extra unused columns to the right for now).

@@ -1,0 +1,15 @@
+{
+  "leds_data_pin": 21,
+  "leds_brightness": 1.0,
+  "keys": {
+    "UP": [17, 2],
+    "DOWN": [14, 4],
+    "LEFT": [18, 15],
+    "RIGHT": [23, 27],
+    "ENTER": [24, 22],
+    "P2_UP": [10, 9],
+    "P2_DOWN": [8, 25],
+    "P2_LEFT": [11, 7],
+    "P2_RIGHT": [5, 12]
+  }
+}

@@ -11,7 +11,7 @@ import argparse
 from itertools import product
 from time import sleep
 
-from main import MATRIX_DPIN, MATRIX_HEIGHT, NUM_OF_MATRICES, SINGLE_MATRIX_WIDTH
+from main import MATRIX_HEIGHT, NUM_OF_MATRICES, SINGLE_MATRIX_WIDTH
 from platforms.factory import create_matrix
 
 RECT_WIDTH = 5
@@ -48,7 +48,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("mode", nargs="?", choices=["rpi", "sim"], default="rpi")
     parser.add_argument("--num-of-matrices", type=int, default=NUM_OF_MATRICES)
-    parser.add_argument("--din-pin", type=int, default=MATRIX_DPIN)
+    parser.add_argument(
+        "--din-pin", type=int, help="default: platforms/rpi/mapping.json's leds_data_pin")
     parser.add_argument("--delay", type=float, default=0.03, help="seconds per step")
     return parser.parse_args()
 

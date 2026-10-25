@@ -81,13 +81,19 @@ description below.
   mode string, lazily importing rpi-only modules only when needed.
 - `platforms/rpi/` — real-hardware backend:
   - `leds.py` — `ChainedMatrix`: driver for N (default 5) concatenated 8x32
-    snake-wired WS281x panels on one data pin (default GPIO 21), each panel's
-    x- and y-axes reversed relative to the previous one. Imports
-    `adafruit_raspberry_pi5_neopixel_write` at module scope (RPi-only).
-  - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)
-    via edge-detect callbacks, tracking both one-shot clicks and a
-    `_held_keys` set for `is_pressed()`. Imports `RPi.GPIO` at module scope
-    (RPi-only).
+    snake-wired WS281x panels on one data pin (default: `mapping.json`'s
+    `leds_data_pin`), each panel's x- and y-axes reversed relative to the
+    previous one. Imports `adafruit_raspberry_pi5_neopixel_write` at module
+    scope (RPi-only).
+  - `keys.py` — `RpiKeyHandler`: 9 GPIO buttons (both D-pads + ENTER), each
+    with its own LED, via edge-detect callbacks, tracking both one-shot
+    clicks and a `_held_keys` set for `is_pressed()`; a button's LED is lit
+    while its key is active (`set_active_keys()`). Imports `RPi.GPIO` at
+    module scope (RPi-only).
+  - `mapping.json` + `mapping.py` (`load_mapping()`) — the rig's GPIO
+    wiring: `leds_data_pin`, `leds_brightness` (0-1, scales every matrix
+    color), and `keys` as `{"UP": [input pin, LED pin],
+    ...}` keyed by `Key` name.
   - `score.py` — `SerialScoreDisplay`: optional serial link to an external
     ESP32 score display (`/dev/ttyUSB0`). Imports `pyserial`.
 - `platforms/simulator/` — tkinter-based backend, no extra deps beyond the

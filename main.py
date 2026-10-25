@@ -18,7 +18,7 @@ from platforms.interfaces import AudioPlayer, Key, KeyHandler
 # to build these itself back when it was the only thing running).
 SINGLE_MATRIX_WIDTH = 8
 MATRIX_HEIGHT = 32
-MATRIX_DPIN = 21
+# The board's data pin is rpi wiring, so it lives in platforms/rpi/mapping.json.
 NUM_OF_MATRICES = 5
 
 BANNER_PANEL_WIDTH = 32
@@ -54,7 +54,7 @@ def create_matrices(mode: str, num_of_matrices: int, banner_size: int):
 
     banner_dims = (BANNER_PANEL_HEIGHT, BANNER_PANEL_WIDTH * banner_size)
     matrix = create_matrix(
-        mode, MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
+        mode, None, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
         banner_dims=banner_dims)
     banner_matrix = create_banner_matrix(
         mode, BANNER_DPIN, BANNER_PANEL_WIDTH, BANNER_PANEL_HEIGHT, banner_size)

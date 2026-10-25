@@ -13,11 +13,16 @@ class SerialScoreDisplay(ScoreDisplay):
         self.serial = None
 
     def __enter__(self):
-        self.serial = serial.Serial(
-            port=self.port,
-            baudrate=self.baudrate,
-            timeout=self.timeout
-        )
+        # The display is optional: without it, scores just aren't shown.
+        try:
+            self.serial = serial.Serial(
+                port=self.port,
+                baudrate=self.baudrate,
+                timeout=self.timeout
+            )
+        except serial.SerialException as e:
+            print(f"warning: no score display, running without one ({e})")
+            return self
         # Allow ESP32 to initialize
         time.sleep(2)
         return self
@@ -27,6 +32,8 @@ class SerialScoreDisplay(ScoreDisplay):
             self.serial.close()
 
     def send_score(self, score, highest):
+        if self.serial is None:
+            return
         try:
             message = f"{score} {highest}\r\n"
             self.serial.write(message.encode())

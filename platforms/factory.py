@@ -5,9 +5,12 @@ from platforms.interfaces import AudioPlayer, KeyHandler, Matrix, ScoreDisplay
 
 
 def create_matrix(
-    mode: str, din_pin: int, matrix_max_x: int, matrix_max_y: int,
+    mode: str, din_pin: Optional[int], matrix_max_x: int, matrix_max_y: int,
     num_of_matrices: int = 5, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
+    """`din_pin` None means the rpi backend's wired data pin, from
+    platforms/rpi/mapping.json (the simulator ignores it either way)."""
+
     if mode == "rpi":
         from platforms.rpi.leds import ChainedMatrix
         return ChainedMatrix(din_pin, num_of_matrices, matrix_max_x, matrix_max_y)
