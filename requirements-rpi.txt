@@ -2,3 +2,4 @@ lgpio
 Adafruit-Blinka-Raspberry-Pi5-Neopixel
 pyserial
 Pillow
+pygame

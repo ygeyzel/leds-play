@@ -348,18 +348,16 @@ class AudioPlayer(ABC):
     def set_muted(self, muted: bool): ...
 ```
 
-- `platforms/simulator/audio.py` - `SimulatorAudioPlayer`, backed by
+- `platforms/audio.py` - `PygameAudioPlayer`, used by both backends, backed by
   `pygame.mixer` (cross-platform, handles looped bgm plus overlapping sfx
   on separate channels so one never interrupts the other; `winsound` was
   the only stdlib alternative and isn't cross-platform). `pygame` is a
-  base dependency now (sim-side only, same as Pillow). Muting stops the
+  base dependency now. Muting stops the
   bgm outright and remembers the last `play_bgm()` call to resume from the
   start on unmute; sfx just skip playing while muted.
-- `platforms/rpi/audio.py` - `RpiAudioPlayer`, a no-op stub, same pattern
-  `create_matrix`/`create_banner_matrix` already use for the rpi/sim
-  capability gap. Left for a future session to fill in with real Pi audio
-  wiring (speaker/DAC choice, GPIO/I2S specifics - all TBD, out of scope
-  here).
+- `platforms/rpi/audio.py` - `RpiAudioPlayer`, the same player plus
+  routing to the desktop user's PipeWire session (rpi mode runs under
+  `sudo`), whose default sink is the Pi's USB sound card.
 - `platforms/factory.py`'s `create_audio_player(mode)` picks between them.
 - `Game` (`games/base.py`) gained a `stop()` hook (default no-op), called
   once when a game is left for something else (the menu, or a different

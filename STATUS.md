@@ -428,11 +428,27 @@ just a plan).
     live-incrementing score and multiple pipes coexisting on screen
     correctly; confirmed `best_score` persists to `.best_score` (unlike
     Pong) and is read back on a later launch.
+- **rpi score display and audio**:
+  - `platforms/rpi/score.py` - `SerialScoreDisplay` now speaks the
+    `leds-play-score-board` ESP32 firmware's serial protocol (115200 baud,
+    `"score,best\n"`; each part goes on one of its two 8x32 boards,
+    zero-padded to 8 digits; it replies `OK`/an error per line, which is
+    discarded). A bare newline on open clears any partial line in the
+    ESP32's buffer. Verified on the Pi: `OK` replies.
+  - Audio: `SimulatorAudioPlayer` became the shared
+    `platforms/audio.py`'s `PygameAudioPlayer` (used as-is in `sim` mode;
+    silently no-ops if no output device opens). `platforms/rpi/audio.py`'s
+    `RpiAudioPlayer` subclasses it and, since rpi mode runs under `sudo`,
+    points `PULSE_SERVER` at `$SUDO_USER`'s PipeWire socket - its default
+    sink is the USB sound card (PCM2902), whereas root's bare-ALSA default
+    is HDMI. `pygame` added to `requirements-rpi.txt`. Verified on the Pi
+    the mixer opens via PipeWire; actual sound not yet confirmed by ear.
 - **Implemented audio** (`AudioPlayer` contract from `GAME_TEMPLATE.md`,
   Tetris wired up as the first game to use it):
   - `platforms/interfaces.py` - `AudioPlayer` ABC: `play_bgm(path,
     loop=True)`, `stop_bgm()`, `play_sfx(path)`, `set_muted(muted)`.
-  - `platforms/simulator/audio.py` - `SimulatorAudioPlayer`, backed by
+  - `platforms/simulator/audio.py` (now `platforms/audio.py`'s
+    `PygameAudioPlayer`, see above) - `SimulatorAudioPlayer`, backed by
     `pygame.mixer`: background music on the dedicated music channel,
     sound effects as one-shot `Sound`s on whatever channel pygame picks,
     so an sfx never interrupts the bgm. Muting stops the bgm outright and
@@ -440,9 +456,8 @@ just a plan).
     unmute; sfx just skip playing while muted (too short-lived to need
     stopping mid-play). `pygame` added to the base dependencies (sim-side
     only, same as Pillow).
-  - `platforms/rpi/audio.py` - `RpiAudioPlayer`, a no-op stub, same
-    pattern `create_matrix`/`create_banner_matrix` already use for other
-    rpi/sim capability gaps.
+  - `platforms/rpi/audio.py` - `RpiAudioPlayer`, at first a no-op stub
+    (since implemented, see above).
   - `platforms/factory.py` - `create_audio_player(mode)`.
   - `games/base.py` - `Game` gained a `stop()` hook (default no-op),
     called once when a game is left for something else (the menu, or a
@@ -524,8 +539,7 @@ Roughly in the order they'll likely need to happen:
      does; all of them just leave it blank while playing).
 2. **Audio on the other games**: Snake/Pong/Flappy Bird all accept
    `audio_player` (per the shared constructor convention) but don't use it
-   yet - no `BGM_PATH`/`SFX_PATHS` of their own. `platforms/rpi/audio.py`
-   is also still a no-op stub - real Pi audio hardware/wiring is TBD.
+   yet - no `BGM_PATH`/`SFX_PATHS` of their own.
 3. **More games**: Tetris, Snake, Pong and Flappy Bird are done - see
    `GAME_TEMPLATE.md` for the per-game contract new ones follow. No
    specific next game is planned yet.

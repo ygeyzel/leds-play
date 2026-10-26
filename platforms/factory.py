@@ -62,5 +62,5 @@ def create_audio_player(mode: str) -> AudioPlayer:
         from platforms.rpi.audio import RpiAudioPlayer
         return RpiAudioPlayer()
 
-    from platforms.simulator.audio import SimulatorAudioPlayer
-    return SimulatorAudioPlayer()
+    from platforms.audio import PygameAudioPlayer
+    return PygameAudioPlayer()

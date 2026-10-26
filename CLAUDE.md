@@ -94,8 +94,12 @@ description below.
     wiring: `leds_data_pin`, `leds_brightness` (0-1, scales every matrix
     color), and `keys` as `{"UP": [input pin, LED pin],
     ...}` keyed by `Key` name.
-  - `score.py` — `SerialScoreDisplay`: optional serial link to an external
-    ESP32 score display (`/dev/ttyUSB0`). Imports `pyserial`.
+  - `score.py` — `SerialScoreDisplay`: optional serial link to the
+    external ESP32 score display (`/dev/ttyUSB0`, firmware in the sibling
+    `leds-play-score-board` repo: `"score,best\n"` at 115200). Imports
+    `pyserial`.
+  - `audio.py` — `RpiAudioPlayer`: `platforms/audio.py`'s pygame player,
+    routed to `$SUDO_USER`'s PipeWire session (USB sound card).
 - `platforms/simulator/` — tkinter-based backend, no extra deps beyond the
   standard library:
   - `window.py` — `SimulatorWindow`/`get_window()`: the single shared `Tk`
@@ -116,9 +120,8 @@ description below.
   clean run of these as CI-style verification, and don't try to run them
   without a Pi.
 
-Real Pi audio hardware and per-game audio assets haven't been built yet
-(see `GAME_TEMPLATE.md`'s "Still open" section) — don't assume
-`AudioPlayer` or `BGM_PATH`/`SFX_PATHS` do anything yet.
+Audio (`platforms/audio.py`'s pygame-backed `PygameAudioPlayer`) works in
+both modes, but only Tetris has audio assets (`BGM_PATH`/`SFX_PATHS`) so far.
 
 ## Conventions
 
