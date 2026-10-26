@@ -5,16 +5,15 @@ from platforms.interfaces import AudioPlayer, KeyHandler, Matrix, ScoreDisplay
 
 
 def create_matrix(
-    mode: str, din_pin: int, matrix_max_x: int, matrix_max_y: int,
-    num_of_matrices: int = 2, *, banner_dims: Optional[Position] = None,
+    mode: str, din_pin: Optional[int], matrix_max_x: int, matrix_max_y: int,
+    num_of_matrices: int = 5, *, banner_dims: Optional[Position] = None,
 ) -> Matrix:
+    """`din_pin` None means the rpi backend's wired data pin, from
+    platforms/rpi/mapping.json (the simulator ignores it either way)."""
+
     if mode == "rpi":
-        from platforms.rpi.leds import DualMatrix
-        if num_of_matrices != 2:
-            print(
-                f"warning: rpi backend doesn't support --num-of-matrices yet "
-                f"(always chains 2 panels); ignoring requested {num_of_matrices}")
-        return DualMatrix(din_pin, matrix_max_x, matrix_max_y)
+        from platforms.rpi.leds import ChainedMatrix
+        return ChainedMatrix(din_pin, num_of_matrices, matrix_max_x, matrix_max_y)
 
     from platforms.simulator.leds import SimulatorMatrix
     return SimulatorMatrix(
@@ -63,5 +62,5 @@ def create_audio_player(mode: str) -> AudioPlayer:
         from platforms.rpi.audio import RpiAudioPlayer
         return RpiAudioPlayer()
 
-    from platforms.simulator.audio import SimulatorAudioPlayer
-    return SimulatorAudioPlayer()
+    from platforms.audio import PygameAudioPlayer
+    return PygameAudioPlayer()

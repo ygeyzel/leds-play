@@ -76,14 +76,19 @@ ends the round.
 
 ## Hardware (current)
 
-- Two 8x32 WS281x LED panels wired together as one 16x32 matrix.
-- 4 buttons (up, down, left, right) wired to GPIO pins.
+- A Raspberry Pi 5 driving five 8x32 WS281x LED panels chained on one data
+  pin (GPIO 21) as one 40x32 matrix (`--num-of-matrices` changes the count).
+- 9 buttons, each with its own LED: two D-pads (P1/P2) plus ENTER, wired
+  straight to GPIO pins. A button's LED lights while the current game uses
+  that key.
+- All GPIO wiring (the LED data pin, each button's input/LED pins) lives in
+  `platforms/rpi/mapping.json`.
 - Optional: an external serial (ESP32) score display.
 
 This is expected to grow (more LEDs, more buttons) as new games need more
 display area or more input actions than Tetris did. `sim` mode already
 supports the bigger setup described below; the `rpi` backend hasn't been
-updated to match yet (still fixed at 2 panels / 4 buttons / no banner).
+updated to match yet (N board panels and all 9 buttons work, but no banner).
 
 ## Hardware (sim mode, configurable)
 

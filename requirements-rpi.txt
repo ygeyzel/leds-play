@@ -1,3 +1,5 @@
 lgpio
-rpi-ws281x
+Adafruit-Blinka-Raspberry-Pi5-Neopixel
 pyserial
+Pillow
+pygame

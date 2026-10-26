@@ -21,7 +21,7 @@ description below.
     for the matrix (pixel-for-pixel) and keyboard arrow keys standing in for
     the buttons, for development without hardware.
 - A hardware abstraction layer so game code never talks to `RPi.GPIO` or
-  `rpi_ws281x` directly: **done**, see `platforms/interfaces.py` (the
+  `adafruit_raspberry_pi5_neopixel_write` directly: **done**, see `platforms/interfaces.py` (the
   `Matrix`/`KeyHandler`/`ScoreDisplay` contracts) with a `platforms/rpi/`
   implementation and a `platforms/simulator/` implementation, picked by
   `platforms/factory.py`.
@@ -80,19 +80,31 @@ description below.
   `create_score_display`: pick the `rpi` or `simulator` backend for a given
   mode string, lazily importing rpi-only modules only when needed.
 - `platforms/rpi/` — real-hardware backend:
-  - `leds.py` — `DualMatrix`: driver for two 8x32 WS281x panels wired
-    together as one matrix. Imports `rpi_ws281x` at module scope (RPi-only).
-  - `keys.py` — `RpiKeyHandler`: 4 fixed GPIO buttons (up/down/left/right)
-    via edge-detect callbacks, tracking both one-shot clicks and a
-    `_held_keys` set for `is_pressed()`. Imports `RPi.GPIO` at module scope
-    (RPi-only).
-  - `score.py` — `SerialScoreDisplay`: optional serial link to an external
-    ESP32 score display (`/dev/ttyUSB0`). Imports `pyserial`.
+  - `leds.py` — `ChainedMatrix`: driver for N (default 5) concatenated 8x32
+    snake-wired WS281x panels on one data pin (default: `mapping.json`'s
+    `leds_data_pin`), each panel's x- and y-axes reversed relative to the
+    previous one. Imports `adafruit_raspberry_pi5_neopixel_write` at module
+    scope (RPi-only).
+  - `keys.py` — `RpiKeyHandler`: 9 GPIO buttons (both D-pads + ENTER), each
+    with its own LED, via edge-detect callbacks, tracking both one-shot
+    clicks and a `_held_keys` set for `is_pressed()`; a button's LED is lit
+    while its key is active (`set_active_keys()`). Imports `RPi.GPIO` at
+    module scope (RPi-only).
+  - `mapping.json` + `mapping.py` (`load_mapping()`) — the rig's GPIO
+    wiring: `leds_data_pin`, `leds_brightness` (0-1, scales every matrix
+    color), and `keys` as `{"UP": [input pin, LED pin],
+    ...}` keyed by `Key` name.
+  - `score.py` — `SerialScoreDisplay`: optional serial link to the
+    external ESP32 score display (`/dev/ttyUSB0`, firmware in the sibling
+    `leds-play-score-board` repo: `"score,best\n"` at 115200). Imports
+    `pyserial`.
+  - `audio.py` — `RpiAudioPlayer`: `platforms/audio.py`'s pygame player,
+    routed to `$SUDO_USER`'s PipeWire session (USB sound card).
 - `platforms/simulator/` — tkinter-based backend, no extra deps beyond the
   standard library:
   - `window.py` — `SimulatorWindow`/`get_window()`: the single shared `Tk`
     root/canvas the matrix, keys and score backends below draw into.
-  - `leds.py` — `SimulatorMatrix`: pixel-for-pixel stand-in for `DualMatrix`.
+  - `leds.py` — `SimulatorMatrix`: pixel-for-pixel stand-in for `ChainedMatrix`.
   - `keys.py` — `SimulatorKeyHandler`: arrow keys -> `Key`, plus an on-screen
     D-pad that highlights the currently-pressed key.
   - `score.py` + `led_board.py` — `SimulatorScoreDisplay`: score/high
@@ -102,25 +114,29 @@ description below.
   `BOARD_DIMS`, `hsv_to_rgb`, `is_position_out_of_range`.
 - `tests/` — **not automated pytest**. These are manual/interactive checks
   meant to be run on the Pi with real hardware attached: they light up the
-  matrix or wait on real key presses and pause on `input()`. Don't treat a
+  matrix or wait on real key presses and pause on `input()`.
+  `tests/test_matrix_snake.py` (a 5x3 rectangle snaking across the whole
+  board) also runs in `sim` mode. Don't treat a
   clean run of these as CI-style verification, and don't try to run them
   without a Pi.
 
-Real Pi audio hardware and per-game audio assets haven't been built yet
-(see `GAME_TEMPLATE.md`'s "Still open" section) — don't assume
-`AudioPlayer` or `BGM_PATH`/`SFX_PATHS` do anything yet.
+Audio (`platforms/audio.py`'s pygame-backed `PygameAudioPlayer`) works in
+both modes, but only Tetris has audio assets (`BGM_PATH`/`SFX_PATHS`) so far.
 
 ## Conventions
 
 - Positions are `(row, col)`-style tuples via the `Position` type in
   `common/common.py`; colors are HSV tuples (`HsvColor`) at the game/drawer
   level and converted to RGB only at the LED driver boundary.
-- Keep hardware-specific imports (`RPi.GPIO`, `rpi_ws281x`) confined to the
+- Keep hardware-specific imports (`RPi.GPIO`, `adafruit_raspberry_pi5_neopixel_write`) confined to the
   `rpi` hardware backend so `simulator` mode and tests can run on a plain PC
   without them installed.
 
 ## Workflow notes
 
+- To run anything on the Pi (rpi mode, `tests/`), use the `rpi` skill
+  (`.claude/skills/rpi/`); SSH details come from the gitignored
+  `.rpi-ssh.json`.
 - Update `STATUS.md` when completing or starting a phase of the migration
   described there, so the next session picks up context correctly.
 - Before committing any Python changes, run `ruff check` on them. If

@@ -18,7 +18,7 @@ from platforms.interfaces import AudioPlayer, Key, KeyHandler
 # to build these itself back when it was the only thing running).
 SINGLE_MATRIX_WIDTH = 8
 MATRIX_HEIGHT = 32
-MATRIX_DPIN = 18
+# The board's data pin is rpi wiring, so it lives in platforms/rpi/mapping.json.
 NUM_OF_MATRICES = 5
 
 BANNER_PANEL_WIDTH = 32
@@ -34,8 +34,7 @@ def parse_args():
         help="run against real hardware (rpi) or the graphical simulator (sim); default: rpi")
     parser.add_argument(
         "--num-of-matrices", type=int, default=NUM_OF_MATRICES,
-        help="number of chained board LED panels (each 8x32); default: %(default)s. "
-             "rpi mode doesn't support this yet and always uses 2.")
+        help="number of chained board LED panels (each 8x32); default: %(default)s")
     parser.add_argument(
         "--size-of-banner", type=int, default=SIZE_OF_BANNER,
         help="number of chained banner LED panels (each 8 rows x 32 cols); "
@@ -55,7 +54,7 @@ def create_matrices(mode: str, num_of_matrices: int, banner_size: int):
 
     banner_dims = (BANNER_PANEL_HEIGHT, BANNER_PANEL_WIDTH * banner_size)
     matrix = create_matrix(
-        mode, MATRIX_DPIN, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
+        mode, None, SINGLE_MATRIX_WIDTH, MATRIX_HEIGHT, num_of_matrices,
         banner_dims=banner_dims)
     banner_matrix = create_banner_matrix(
         mode, BANNER_DPIN, BANNER_PANEL_WIDTH, BANNER_PANEL_HEIGHT, banner_size)
