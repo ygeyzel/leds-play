@@ -6,11 +6,11 @@ for developing and testing games without the hardware.
 
 This project is the successor to [`TetLED`](https://github.com/ygeyzel/tetled), a Tetris-only version of the
 same idea. `LEDs Play` generalizes it into a real game platform: a
-game-selection menu, Tetris, Snake, Pong and Flappy Bird to pick from, and
+game-selection menu, Tetris, Snake, Pong, Flappy Bird and DOOM to pick from, and
 room to add more.
 
-> **Status:** the game abstraction has landed — there's a menu, and four
-> games (Tetris, Snake, Pong, Flappy Bird) behind it. See
+> **Status:** the game abstraction has landed — there's a menu, and five
+> games (Tetris, Snake, Pong, Flappy Bird, DOOM) behind it. See
 > [`STATUS.md`](STATUS.md) for the full history and what's planned next
 > (audio, more games, bringing `rpi` mode up to parity with `sim`).
 
@@ -74,6 +74,13 @@ bird back down every other turn. Pipes scroll in from the right with a
 gap; passing one scores a point, touching a pipe/the ceiling/the ground
 ends the round.
 
+**DOOM** — a first-person raycast maze shooter filling the whole board.
+All keys are read while held: D-pad 1 (arrow keys in `sim`) moves
+forward/back and turns; D-pad 2 strafes (`A`/`D`) and fires (`W`). Reach
+the green exit door for a fresh maze (+50) while a stickman wanders the
+maze and shoots on sight; killing him scores +10. The HP bar is the top
+row; running out ends the round.
+
 ## Hardware (current)
 
 - A Raspberry Pi 5 driving five 8x32 WS281x LED panels chained on one data
@@ -101,10 +108,11 @@ updated to match yet (N board panels and all 9 buttons work, but no banner).
 - **Buttons**: two D-pads (up/down/left/right each) plus an Enter button,
   9 inputs in total:
   - D-pad 1 (original 4): arrow keys in `sim`. Used by the menu, Snake,
-    Pong's right paddle, and Flappy Bird's flap (`Key.UP`).
+    Pong's right paddle, Flappy Bird's flap (`Key.UP`), and DOOM's
+    move/turn.
   - D-pad 2 (`Key.P2_*`): `W`/`A`/`S`/`D` in `sim`. `W` is Snake's run key
-    and Pong's left paddle up; `S` is Pong's left paddle down. `A`/`D` are
-    reserved for a future 2nd player/game.
+    and Pong's left paddle up; `S` is Pong's left paddle down. In DOOM,
+    `W` fires and `A`/`D` strafe.
   - Enter (`Key.ENTER`): `Enter`/`Return` in `sim`. Launches a game from
     the menu, or returns to the menu from within a game.
 
@@ -171,6 +179,7 @@ games/
   snake/               Snake: rules/state, rendering, logo
   pong/                Pong: 2-player rules/state, rendering, logo
   flappy/              Flappy Bird: rules/state, rendering, logo
+  doom/                DOOM: raycast maze/NPC logic, renderer, sprites, logo
 platforms/
   interfaces.py       Matrix / KeyHandler / ScoreDisplay contracts, shared Key enum
   canvas.py            hardware-agnostic drawing surface used by game drawers

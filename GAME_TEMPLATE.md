@@ -67,6 +67,13 @@ games/
     drawer.py            # white border box, green pipes, a yellow bird
     logo.png             # pixel art, 12x12, a yellow bird
     .best_score          # gitignored, created on first run
+  doom/
+    __init__.py        # DoomGame(Game) - the fifth game, real-time first-person
+    board.py            # maze, player, NPC, raycast/camera logic
+    drawer.py            # full-board raycast renderer + HUD
+    sprites.py           # NPC stickman bitmaps
+    logo.png             # pixel art, 12x12, a corridor with the exit door
+    .best_score          # gitignored, created on first run
 tools/
   logo_editor.py       # standalone tkinter logo.png/logo_small.png painter
   font_editor.py        # standalone tkinter games/menu/font.py glyph painter
@@ -337,6 +344,17 @@ The fourth game, and the first single-key one - `USED_KEYS = {Key.UP}`:
 - **Best score**: unlike Pong, this is an ordinary single-player game, so
   it uses `Game`'s default file-backed `best_score`/`_update_best_score()`
   behavior unchanged - no override needed.
+
+## DOOM (`games/doom/`)
+
+The fifth game, and the first real-time one: `turn_interval` is a fixed
+1/30s frame tick, and `advance_turn` measures the actual elapsed time
+(clamped to `MAX_DT`) and passes it to `Board.advance(dt, ...)`, so
+movement speed doesn't depend on how fast a frame renders. Every input
+is a held key via `is_pressed`. It's also the first game that lights
+every pixel of the board, so its drawer writes only changed pixels and
+dims colors (`BRIGHTNESS`). Its view size comes from the board
+matrix's own `dimensions`, so it scales with `--num-of-matrices`.
 
 ## Audio (`platforms/interfaces.py`'s `AudioPlayer`)
 

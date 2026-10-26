@@ -51,7 +51,7 @@ description below.
   `GAME_TEMPLATE.md` for the full per-game template (name/logo/assets/
   audio) this is part of.
 - `games/registry.py` — explicit `GAMES` list of games selectable from the
-  menu (`TetrisGame`, `SnakeGame`).
+  menu (`TetrisGame`, `SnakeGame`, `PongGame`, `FlappyGame`, `DoomGame`).
 - `games/menu/__init__.py` — `MenuGame(Game)`: the game-selection screen
   (LEFT/RIGHT cycles `GAMES`, ENTER launches); persists the selection to
   `games/menu/.current_game`.
@@ -70,6 +70,10 @@ description below.
   (`board.py`/`drawer.py`/`__init__.py`). Its run boost (hold `Key.P2_UP`,
   "W" in `sim`) is the first thing to use `KeyHandler.is_pressed()` for
   continuous hold state rather than `get_key()`'s one-shot clicks.
+- `games/doom/` — a real-time first-person raycast maze shooter (ported
+  from a standalone PoC) using the whole board: `board.py` (maze/player/
+  NPC/camera, advanced by real `dt` seconds), `drawer.py` (renders RGB,
+  writes only changed pixels as dimmed HSV), `sprites.py`.
 - `platforms/interfaces.py` — hardware-agnostic contracts: `Matrix`,
   `KeyHandler` (`get_key`/`flush`/`pump`/`is_pressed`), `ScoreDisplay`
   (ABCs) and the shared `Key` enum.

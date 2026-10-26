@@ -428,6 +428,29 @@ just a plan).
     live-incrementing score and multiple pipes coexisting on screen
     correctly; confirmed `best_score` persists to `.best_score` (unlike
     Pong) and is read back on a later launch.
+- **Implemented DOOM** (`games/doom/`) as the fifth game, ported from the
+  user's standalone tkinter raycasting PoC (`~/playground/raycasting/maze.py`):
+  - `board.py` - maze generation/wall coloring, `Player`, the wandering/
+    shooting `NPC`, DDA `cast_ray`, and a `Camera` sized to the board
+    (40x32 with 5 panels; the PoC's 66-degree FOV is for a square view and
+    is widened proportionally). Time advances by real seconds
+    (`Board.advance(dt, ...)`, dt clamped to 0.1s), not whole turns.
+    Escaping a maze scores 50 and starts a fresh one keeping your HP; a
+    kill scores 10; HP 0 ends the round.
+  - `drawer.py` - renders the full-board first-person view + HUD (gun,
+    crosshair, HP bar on row 0, red hurt / green escape tint) as RGB, then
+    writes only changed pixels, converting to HSV scaled by `BRIGHTNESS`
+    (0.2 - every pixel is lit, unlike the other games). The PoC's map side
+    panel and status text are dropped.
+  - `sprites.py` - the stickman bitmaps (3 mip sizes per pose).
+  - Controls are all `is_pressed` holds: UP/DOWN move, LEFT/RIGHT turn,
+    P2_LEFT/P2_RIGHT strafe, P2_UP fires (a one-shot P2_UP click also
+    fires, for taps shorter than a turn). `turn_interval` is 1/30s.
+  - Logo: `games/doom/logo.png`, a red/blue corridor with the green exit
+    and the gun, 12x12.
+  - Verified: headless smoke test (fake matrix, random inputs, ~0.65ms
+    per frame on a PC), launches in `sim` with no errors; not yet
+    play-tested on the Pi.
 - **Implemented audio** (`AudioPlayer` contract from `GAME_TEMPLATE.md`,
   Tetris wired up as the first game to use it):
   - `platforms/interfaces.py` - `AudioPlayer` ABC: `play_bgm(path,
@@ -526,7 +549,7 @@ Roughly in the order they'll likely need to happen:
    `audio_player` (per the shared constructor convention) but don't use it
    yet - no `BGM_PATH`/`SFX_PATHS` of their own. `platforms/rpi/audio.py`
    is also still a no-op stub - real Pi audio hardware/wiring is TBD.
-3. **More games**: Tetris, Snake, Pong and Flappy Bird are done - see
+3. **More games**: Tetris, Snake, Pong, Flappy Bird and DOOM are done - see
    `GAME_TEMPLATE.md` for the per-game contract new ones follow. No
    specific next game is planned yet.
 
